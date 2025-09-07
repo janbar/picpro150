@@ -1,0 +1,75 @@
+A command line utility to interoperate with PIC programmer K150.
+The supported protocol is P18A.
+
+Usage
+=====
+
+  picpro <action> [filter] [ <option> ]
+      Performing "<action>" with an optional filter, and options.
+  picpro -h | --help
+      Print this text and terminate.
+  picpro -v | --version
+      Print version and build status.
+
+Options
+=======
+
+  -p <PORT>
+      Uses "<PORT>" as serial device to communicate with the PIC programmer.
+      The default is "/dev/ttyUSB0".
+  -t <CHIP_NAME>
+      The type of CHIP used, i.e 16F628. It should exist in the database
+      file (see option -d).
+  -d <DAT_PATH>
+      The path of database file containing CHIP description.
+      The default is "$EXEC_PATH/picopro.dat".
+  -i <HEX_PATH>
+      The path of input HEX file.
+      By default data is imported with LE byte-order. Use flag --hexbig to
+      use BE byte-order instead.
+  -o <HEX_PATH>
+      The path of output HEX file.
+      Data is exported with LE byte-order, or use flag --hexbig to use BE
+      byte-order.
+  --hexbig
+      Fix the byte-order to BE, when importing or exporting data from HEX
+      file. The default is LE.
+  --icsp
+      Enable ISCP programming.
+  --range=<00000000-FFFFFFFF>
+      Set a range of addresses.
+  --blank=<BLANK_WORD>
+      Set the blank word to use for conversion from HEX to RAW.
+      Default is 0000.
+  --debug
+      Print verbose and debug messages.
+
+Actions
+=======
+
+  dump hex -i <HEX_FILE> [ --hexbig ]
+      Print out the content of the given HEX file.
+  convert hex2raw -i <HEX_FILE> -o <RAW_FILE> --range=<ADDR-ADDR>
+          [ --blank=<WORD> --hexbig ]
+      Convert HEX segment to RAW. The default blank word is 0000.
+  convert raw2hex -i <RAW_FILE> -o <HEX_FILE> --range=<ADDR-ADDR> [ --hexbig ]
+      Convert RAW data to HEX segment mapped at the range of addresses.
+  list <all | filter>
+      List CHIP in database.
+  dryrun <filter> -t <CHIP_NAME> -i <HEX_PATH> [ --hexbig ]
+      Run "program" action without actually performing it.
+
+  program <filter> -t <CHIP_NAME> -i <HEX_PATH> -p <PORT> [ --hexbig ]
+      Program the CHIP for the given filter area: all | rom | eeprom | config.
+      Filter "all" will erase the CHIP before programming all areas of CHIP.
+      Filter "config" will program ID and FUSEs only.
+  verify <filter> -t <CHIP_NAME> -i <HEX_PATH> -p <PORT> [ --hexbig ]
+      Read the CHIP area according to the given filter rom | eeprom, then
+      compares it to the content of the HEX source.
+  erase -t <CHIP_NAME> -p <PORT>
+      Erase all areas of CHIP, including ROM EEPROM ID and FUSEs.
+  dump <filter> -t <CHIP_NAME> -p <PORT> [ --hexbig -o <HEX_PATH> ]
+      Read the chip area according to the given filter rom | eeprom | config,
+      Then print out the content, or save it into the given HEX file.
+  isblank <filter> -t <CHIP_NAME> -p <PORT>
+      Check for memory blank, according to the given filter rom | eeprom.
