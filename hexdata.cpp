@@ -84,7 +84,7 @@ std::vector<uint8_t> HexData::readline(FILE * file)
   // read a line
   do
   {
-    char c = fgetc(file);
+    int c = fgetc(file);
     if (c < 0)
       eof = true;
     else if (c == 0x0a)

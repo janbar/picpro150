@@ -41,7 +41,7 @@ void CHIPInfo::dumplist(const std::string& datfile, const std::string& filter)
     // read a line
     do
     {
-      char c = fgetc(file);
+      int c = fgetc(file);
       if (c < 0)
         eof = true;
       else if (c == 0x0a)
@@ -97,7 +97,7 @@ bool CHIPInfo::loaddata(const std::string& datfile, const std::string& chipname)
     // read a line
     do
     {
-      char c = fgetc(file);
+      int c = fgetc(file);
       if (c < 0)
         eof = true;
       else if (c == 0x0a)
