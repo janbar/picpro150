@@ -154,14 +154,14 @@ bool CHIPInfo::loaddata(const std::string& datfile, const std::string& chipname)
           else if (vn == "CORETYPE")
             m_info.core_type = upperStr(unwrap(var[1]));
           else if (vn == "ROMSIZE")
-            m_info.rom_size = (int) std::stod(std::string("0x").append(unwrap(var[1])));
+            m_info.rom_size = (int) ::strtoul(unwrap(var[1]).c_str(), nullptr, 16);
           else if (vn == "EEPROMSIZE")
-            m_info.eeprom_size = (int) std::stod(std::string("0x").append(unwrap(var[1])));
+            m_info.eeprom_size = (int) ::strtoul(unwrap(var[1]).c_str(), nullptr, 16);
           else if (vn == "FUSEBLANK")
           {
             m_info.fuse_blank.clear();
             for (std::string& m : tokenize(unwrap(var[1]), ' ', '\0', true))
-              m_info.fuse_blank.push_back((int) std::stod(std::string("0x").append(m)));
+              m_info.fuse_blank.push_back((int) ::strtoul(m.c_str(), nullptr, 16));
           }
           else if (vn == "INCLUDE")
             m_info.include = (upperStr(unwrap(var[1])) == "Y");

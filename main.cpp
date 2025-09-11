@@ -209,10 +209,10 @@ int main(int argc, char** argv)
       // fill raw data for ID
       for (int i = 0; i < buf.size(); i += 2)
       {
-        std::string bb("0x");
+        std::string bb;
         bb.push_back(buf[i]);
         bb.push_back(buf[i + 1]);
-        int val = std::stod(bb);
+        int val = (int) ::strtoul(bb.c_str(), nullptr, 16);
         ID.push_back((val) & 0xff);
       }
     }
