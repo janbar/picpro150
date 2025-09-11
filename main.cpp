@@ -484,7 +484,17 @@ int main(int argc, char** argv)
       std::vector<uint8_t> data;
       ok &= programmer.readEEPROM(data);
       if (!outhex.empty())
-        ok &= hex.loadRAW(programmer.properties().eeprom_base, data);
+      {
+        // convert byte to word
+        std::vector<uint8_t> b16;
+        b16.reserve(2 * data.size());
+        for (uint8_t b : data)
+        {
+          b16.push_back(0);
+          b16.push_back(b);
+        }
+        ok &= hex.loadRAW(programmer.properties().eeprom_base, b16);
+      }
       else
         logdata(stdout, data);
     }
@@ -797,7 +807,7 @@ bool program_pic(
   std::vector<uint8_t> eeprom_data;
   eeprom_data.reserve(props.eeprom_size);
   {
-    std::vector<uint8_t> b16 = hex.rangeOfData(props.eeprom_base, props.eeprom_size, 0xffff);
+    std::vector<uint8_t> b16 = hex.rangeOfData(props.eeprom_base, props.eeprom_size, 0x00ff);
     for (int i = 0; i < b16.size(); i += 2)
       eeprom_data.push_back(b16[i + 1]);
   }
