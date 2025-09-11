@@ -52,7 +52,7 @@ public:
 class Programmer
 {
 private:
-  void logbuffer();
+  void logbuffer(FILE * out);
 
 public:
   Programmer() { }

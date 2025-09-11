@@ -33,7 +33,7 @@ class HexData
 private:
   static int hex_to_num(const char * str, int sz);
   static void u8_to_hex(std::string& str, uint8_t u);
-  static void logdata(const std::vector<uint8_t>& data);
+  static void logdata(FILE * out, const std::vector<uint8_t>& data);
   static std::vector<uint8_t> readline(FILE * file);
   std::string hexrecord(int& ext_addr, int addr, const std::vector<uint8_t>& data, bool le = true);
 

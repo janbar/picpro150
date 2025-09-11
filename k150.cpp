@@ -90,26 +90,26 @@ static SOCKET_HINT SOCKET_HINT_LIST[] = {
 };
 
 
-void Programmer::logbuffer()
+void Programmer::logbuffer(FILE * out)
 {
   unsigned idx = 0, lno = 0;
   size_t sz = m_buffer.size();
   while (idx < sz)
   {
     ++lno;
-    fprintf(stdout, "%08X:  ", idx);
+    fprintf(out, "%08X:  ", idx);
     char str[24];
     int i;
     for (i = 0; i < 16 && idx < sz; ++i, ++idx)
     {
-      fprintf(stdout, "%02x ", (unsigned char) m_buffer[idx]);
+      fprintf(out, "%02x ", (unsigned char) m_buffer[idx]);
       str[i] = (m_buffer[idx] > 32 && m_buffer[idx] < 127 ? m_buffer[idx] : '.');
     }
     str[i] = '\0';
-    while (i++ < 16) fputs("   ", stdout);
-    fputc(' ', stdout);
-    fputs(str, stdout);
-    fputc('\n', stdout);
+    while (i++ < 16) fputs("   ", out);
+    fputc(' ', out);
+    fputs(str, out);
+    fputc('\n', out);
   }
 }
 
@@ -142,7 +142,7 @@ bool Programmer::connect(COMPort * port)
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   if (m_buffer[0] != 'B')
     return false;
@@ -165,7 +165,7 @@ bool Programmer::connect(COMPort * port)
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   m_protocol.clear();
   for (unsigned char c : m_buffer)
@@ -176,7 +176,7 @@ bool Programmer::connect(COMPort * port)
     return false;
   }
 
-  fprintf(stdout, "Programmer %s speaks protocol %s.\n",
+  fprintf(stderr, "Programmer %s speaks protocol %s.\n",
           getVersionName().c_str(), getProtocol().c_str());
   return true;
 }
@@ -202,8 +202,8 @@ std::string Programmer::getVersionName()
 
 bool Programmer::configure(const CHIPInfo& info)
 {
-  fprintf(stdout, "Load setup for chip %s ... ", info.data().chip_name.c_str());
-  fflush(stdout);
+  fprintf(stderr, "Load setup for chip %s ... ", info.data().chip_name.c_str());
+  fflush(stderr);
 
   {
     SOCKET_HINT * ptr = SOCKET_HINT_LIST;
@@ -273,7 +273,7 @@ bool Programmer::configure(const CHIPInfo& info)
   m_props.flag_calibration_value_in_rom = info.data().cal_word;
   m_props.flag_band_gap_fuse = info.data().band_gap;
 
-  fprintf(stdout, "OK\n");
+  fprintf(stderr, "OK\n");
   return true;
 }
 
@@ -290,7 +290,7 @@ bool Programmer::commandStart()
       while (m_buffer.size() < 1)
         m_port->readData(m_buffer);
       if (m_debug)
-        logbuffer();
+        logbuffer(stderr);
       if (m_buffer[0] == 'Q')
         break;
     }
@@ -315,7 +315,7 @@ bool Programmer::commandStart()
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
   // check for acknowledgement
   if (m_buffer[0] != 'P')
   {
@@ -344,7 +344,7 @@ bool Programmer::commandEnd()
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   if (m_buffer[0] != 'Q')
   {
@@ -358,8 +358,8 @@ bool Programmer::waitUntilChipInSocket()
 {
   if (m_props.socket_hint.empty())
     return true;
-  fprintf(stdout, "Waiting for user to insert chip into socket with pin 1 at %s ... ", m_props.socket_hint.c_str());
-  fflush(stdout);
+  fprintf(stderr, "Waiting for user to insert chip into socket with pin 1 at %s ... ", m_props.socket_hint.c_str());
+  fflush(stderr);
 
   if (!commandStart())
     return false;
@@ -377,7 +377,7 @@ bool Programmer::waitUntilChipInSocket()
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   if (m_buffer[0] != 'A')
   {
@@ -387,7 +387,7 @@ bool Programmer::waitUntilChipInSocket()
 
   if (m_buffer[1] == 'Y')
   {
-    fprintf(stdout, "OK\n");
+    fprintf(stderr, "OK\n");
     return true;
   }
 
@@ -402,8 +402,8 @@ bool Programmer::waitUntilChipOutOfSocket()
   if (!commandStart())
     return false;
 
-  fprintf(stdout, "Waiting until chip out socket ... ");
-  fflush(stdout);
+  fprintf(stderr, "Waiting until chip out socket ... ");
+  fflush(stderr);
   std::vector<uint8_t> msg = { 19 };
   m_port->writeData(msg);
   try
@@ -417,7 +417,7 @@ bool Programmer::waitUntilChipOutOfSocket()
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   if (m_buffer[0] != 'A')
   {
@@ -427,7 +427,7 @@ bool Programmer::waitUntilChipOutOfSocket()
 
   if (m_buffer[1] == 'Y')
   {
-    fprintf(stdout, "OK\n");
+    fprintf(stderr, "OK\n");
     return true;
   }
   return false;
@@ -435,8 +435,8 @@ bool Programmer::waitUntilChipOutOfSocket()
 
 bool Programmer::initializeProgrammingVariables(bool icsp_mode /*= false*/)
 {
-  fprintf(stdout, "Initialize programming interface ... ");
-  fflush(stdout);
+  fprintf(stderr, "Initialize programming interface ... ");
+  fflush(stderr);
 
   if (!commandStart())
     return false;
@@ -491,7 +491,7 @@ bool Programmer::initializeProgrammingVariables(bool icsp_mode /*= false*/)
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   if (m_buffer[0] != 'I')
   {
@@ -499,7 +499,7 @@ bool Programmer::initializeProgrammingVariables(bool icsp_mode /*= false*/)
     return false;
   }
 
-  fprintf(stdout, "OK\n");
+  fprintf(stderr, "OK\n");
   commandEnd();
   return true;
 }
@@ -524,7 +524,7 @@ bool Programmer::setProgrammingVoltages(bool onoff)
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   if ((onoff && m_buffer[0] != 'V') || (!onoff && m_buffer[0] != 'v'))
   {
@@ -553,7 +553,7 @@ bool Programmer::cycleProgrammingVoltages()
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   if (m_buffer[0] != 'V')
   {
@@ -595,7 +595,7 @@ bool Programmer::programROM(const std::vector<uint8_t>& data)
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   if (m_buffer[0] != 'Y')
   {
@@ -621,7 +621,7 @@ bool Programmer::programROM(const std::vector<uint8_t>& data)
     }
 
     if (m_debug)
-      logbuffer();
+      logbuffer(stderr);
 
     if (m_buffer[0] != 'Y')
     {
@@ -642,7 +642,7 @@ bool Programmer::programROM(const std::vector<uint8_t>& data)
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   if (m_buffer[0] != 'P')
   {
@@ -686,7 +686,7 @@ bool Programmer::programEEPROM(const std::vector<uint8_t>& data)
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   if (m_buffer[0] != 'Y')
   {
@@ -712,7 +712,7 @@ bool Programmer::programEEPROM(const std::vector<uint8_t>& data)
     }
 
     if (m_debug)
-      logbuffer();
+      logbuffer(stderr);
 
     if (m_buffer[0] != 'Y')
     {
@@ -738,7 +738,7 @@ bool Programmer::programEEPROM(const std::vector<uint8_t>& data)
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   if (m_buffer[0] != 'P')
   {
@@ -764,8 +764,7 @@ bool Programmer::programCONFIG(const std::vector<uint8_t>& id, const std::vector
   switch (m_props.core_bits)
   {
   case 16:
-    while (id_data.size() < 8)
-      id_data.push_back(0);
+    id_data.resize(8, 0);
     if (fuses.size() != 7)
     {
       fprintf(stderr, "Should have 7 fuses for %d bit core.\n", m_props.core_bits);
@@ -783,8 +782,7 @@ bool Programmer::programCONFIG(const std::vector<uint8_t>& id, const std::vector
     break;
 
   default:
-    while (id_data.size() < 4)
-      id_data.push_back(0);
+    id_data.resize(4, 0);
     // 16f88 is 14bit yet has two fuses
     if (fuses.empty() || fuses.size() > 2)
     {
@@ -822,7 +820,7 @@ bool Programmer::programCONFIG(const std::vector<uint8_t>& id, const std::vector
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   if (m_buffer[0] != 'Y')
   {
@@ -863,7 +861,7 @@ bool Programmer::programCOMMIT_18FXXXX_FUSE()
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   if (m_buffer[0] != 'Y')
   {
@@ -905,7 +903,7 @@ bool Programmer::programCalibration(int cal, int fuse)
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   if (m_buffer[0] != 'Y')
   {
@@ -947,7 +945,7 @@ bool Programmer::eraseChip()
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   if (m_buffer[0] != 'Y')
   {
@@ -975,8 +973,8 @@ bool Programmer::isBlankROM()
   {
     for (;;)
     {
-      fputc('.', stdout);
-      fflush(stdout);
+      fputc('.', stderr);
+      fflush(stderr);
       m_buffer.clear();
       while (m_buffer.size() < 1)
         m_port->readData(m_buffer);
@@ -988,11 +986,11 @@ bool Programmer::isBlankROM()
   {
     return false;
   }
-  fputc('\n', stdout);
-  fflush(stdout);
+  fputc('\n', stderr);
+  fflush(stderr);
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   char c = m_buffer[0];
 
@@ -1026,7 +1024,7 @@ bool Programmer::isBlankEEPROM()
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   char c = m_buffer[0];
   commandEnd();
@@ -1062,7 +1060,7 @@ bool Programmer::readCONFIG()
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   if (m_buffer[0] != 'C')
   {
@@ -1083,7 +1081,7 @@ bool Programmer::readCONFIG()
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   fprintf(stdout, "Chip ID: %02X%02X\n", m_buffer[1], m_buffer[0]);
   fprintf(stdout, "Prog ID: %02X %02X %02X %02X %02X %02X %02X %02X\n",
@@ -1127,7 +1125,7 @@ bool Programmer::readROM(std::vector<uint8_t>& data)
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   data = m_buffer;
 
@@ -1166,7 +1164,7 @@ bool Programmer::readEEPROM(std::vector<uint8_t>& data)
   }
 
   if (m_debug)
-    logbuffer();
+    logbuffer(stderr);
 
   data = m_buffer;
 

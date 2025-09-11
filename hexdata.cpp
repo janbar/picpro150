@@ -53,7 +53,7 @@ void HexData::u8_to_hex(std::string& str, uint8_t u)
   str.push_back(g[(0xf & u)]);
 }
 
-void HexData::logdata(const std::vector<uint8_t>& data)
+void HexData::logdata(FILE * out, const std::vector<uint8_t>& data)
 {
   unsigned idx = 0, lno = 0;
   size_t sz = data.size();
@@ -64,14 +64,14 @@ void HexData::logdata(const std::vector<uint8_t>& data)
     int i;
     for (i = 0; i < 16 && idx < sz; ++i, ++idx)
     {
-      fprintf(stdout, "%02x ", (unsigned char) data[idx]);
+      fprintf(out, "%02x ", (unsigned char) data[idx]);
       str[i] = (data[idx] > 32 && data[idx] < 127 ? data[idx] : '.');
     }
     str[i] = '\0';
-    while (i++ < 16) fputs("   ", stdout);
-    fputc(' ', stdout);
-    fputs(str, stdout);
-    fputc('\n', stdout);
+    while (i++ < 16) fputs("   ", out);
+    fputc(' ', out);
+    fputs(str, out);
+    fputc('\n', out);
   }
 }
 
@@ -123,7 +123,7 @@ bool HexData::loadHEX(const std::string& path, bool le /*= true*/)
 
     if (line.size() < 3 || line[0] != ':')
     {
-      logdata(line);
+      logdata(stderr, line);
       fprintf(stderr, "Invalid format at line %d.\n", lno);
       break;
     }
@@ -135,7 +135,7 @@ bool HexData::loadHEX(const std::string& path, bool le /*= true*/)
 
     if (line.size() != (2 * (reclen + 5) + 1))
     {
-      logdata(line);
+      logdata(stderr, line);
       fprintf(stderr, "Record size is invalid at line %d.\n", lno);
       break;
     }
@@ -214,7 +214,7 @@ bool HexData::loadHEX(const std::string& path, bool le /*= true*/)
     else
     {
       // not implemented
-      logdata(line);
+      logdata(stderr, line);
       fprintf(stderr, "Record type %d is not supported.\n", rectype);
       break;
     }
@@ -224,7 +224,7 @@ bool HexData::loadHEX(const std::string& path, bool le /*= true*/)
     int crc = hex_to_num(hex, 2);
     if (crc != ((~sum + 1) &0xff))
     {
-      logdata(line);
+      logdata(stderr, line);
       fprintf(stderr, "Bad CRC for record at line %d\n", lno);
       break;
     }
@@ -239,8 +239,8 @@ bool HexData::loadHEX(const std::string& path, bool le /*= true*/)
   {
     for (std::map<int, std::vector<uint8_t> >::iterator it = m_segments.begin(); it != m_segments.end(); ++it)
     {
-      fprintf(stdout, ">>> %04X : ", it->first);
-      logdata(it->second);
+      fprintf(stderr, ">>> %04X : ", it->first);
+      logdata(stderr, it->second);
     }
   }
   return true;
@@ -429,7 +429,7 @@ void HexData::dumpSegments()
   for (auto& e : m_segments)
   {
     fprintf(stdout, "%06X : ", e.first);
-    logdata(e.second);
+    logdata(stdout, e.second);
   }
 }
 

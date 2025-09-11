@@ -25,9 +25,12 @@
 #include "hexdata.h"
 #include "usage.h"
 
-#define PP150_VERSION "1.0.0"
+#define PP150_VERSION "1.1.0"
 #define PP150_HEADER  "PIC Programmer version " PP150_VERSION " compiled on " __DATE__ " at " __TIME__
 
+//
+// declarations
+//
 static const char B16_CHARS[] = {
   '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
   'a', 'b', 'c', 'd', 'e', 'f',
@@ -35,44 +38,12 @@ static const char B16_CHARS[] = {
   0
 };
 
-
-class SerialPort : public K150::COMPort
-{
-  Serial::SerialPort& m_port;
-public:
-  SerialPort(Serial::SerialPort& port) : m_port(port) { }
-
-  void writeData(const std::vector<uint8_t>& data) override
-  {
-    m_port.WriteBinary(data);
-  }
-  void readData(std::vector<uint8_t>& data) override
-  {
-      m_port.ReadBinary(data);
-  }
-  void open() override
-  {
-    m_port.Open();
-  }
-  void close() override
-  {
-    m_port.Close();
-  }
-  bool isopen() override
-  {
-    return (m_port.GetState() == Serial::State::OPEN);
-  }
-  void reset() override
-  {
-    m_port.ResetDevice();
-  }
-};
-
 std::string dirname(
         const std::string& filepath
 );
 
 void logdata(
+        FILE * out,
         const std::vector<uint8_t>& data
 );
 
@@ -113,6 +84,44 @@ bool isblank_pic(
         bool program_eeprom
 );
 
+//
+// implement COMPort
+//
+class SerialPort : public K150::COMPort
+{
+  Serial::SerialPort& m_port;
+public:
+  SerialPort(Serial::SerialPort& port) : m_port(port) { }
+
+  void writeData(const std::vector<uint8_t>& data) override
+  {
+    m_port.WriteBinary(data);
+  }
+  void readData(std::vector<uint8_t>& data) override
+  {
+      m_port.ReadBinary(data);
+  }
+  void open() override
+  {
+    m_port.Open();
+  }
+  void close() override
+  {
+    m_port.Close();
+  }
+  bool isopen() override
+  {
+    return (m_port.GetState() == Serial::State::OPEN);
+  }
+  void reset() override
+  {
+    m_port.ResetDevice();
+  }
+};
+
+//
+// main
+//
 enum Operation {
   NONE      = 0,
   CONVERT   = 1,
@@ -125,9 +134,6 @@ enum Operation {
   ISBLANK   = 8,
 };
 
-/*
- *
- */
 int main(int argc, char** argv)
 {
   std::string exepath = dirname(argv[0]);
@@ -186,7 +192,7 @@ int main(int argc, char** argv)
       // should be 2 characters for byte
       if ((buf.size() % 2) != 0 || buf.size() > 16)
       {
-        fprintf(stdout, "Invalid length for ID (%d).\n", (int) buf.size());
+        fprintf(stderr, "Invalid length for ID (%d).\n", (int) buf.size());
         return EXIT_FAILURE;
       }
       // should be hexa-decimal format
@@ -196,7 +202,7 @@ int main(int argc, char** argv)
         while (*p && buf[i] != *p) ++p;
         if (*p == 0)
         {
-          fprintf(stdout, "Invalid format for ID (%s).\n", buf.c_str());
+          fprintf(stderr, "Invalid format for ID (%s).\n", buf.c_str());
           return EXIT_FAILURE;
         }
       }
@@ -331,13 +337,13 @@ int main(int argc, char** argv)
           range_end = (int) strtoul(tmp.c_str(), &c, 16);
         if (range_end <= range_beg)
         {
-          fprintf(stdout, "Invalid range (%s).\n", buf.c_str());
+          fprintf(stderr, "Invalid range (%s).\n", buf.c_str());
           return EXIT_FAILURE;
         }
       }
       else
       {
-        fprintf(stdout, "Invalid format for range (%s).\n", buf.c_str());
+        fprintf(stderr, "Invalid format for range (%s).\n", buf.c_str());
         return EXIT_FAILURE;
       }
     }
@@ -349,7 +355,7 @@ int main(int argc, char** argv)
       range_blank = ((int) strtoul(buf.c_str(), &c, 16)) & 0xffff;
       if (c && *c)
       {
-        fprintf(stdout, "Invalid format for word blank (%s).\n", buf.c_str());
+        fprintf(stderr, "Invalid format for word blank (%s).\n", buf.c_str());
         return EXIT_FAILURE;
       }
     }
@@ -399,7 +405,7 @@ int main(int argc, char** argv)
   switch (op)
   {
   case NONE:
-    fputs("Use option -h or --help to print usage.\n", stdout);
+    fputs("Use option -h or --help to print usage.\n", stderr);
     break;
 
   case DRYRUN:
@@ -430,7 +436,6 @@ int main(int argc, char** argv)
     if (!program_rom && !program_eeprom && !program_config)
     {
       ok &= hex.loadHEX(newhex, !hex_big);
-      fputc('\n', stdout);
       hex.dumpSegments();
       break;
     }
@@ -444,7 +449,7 @@ int main(int argc, char** argv)
     if (!ok)
       break;
 
-    fprintf(stdout, "Initializing programmer on port '%s'.\n",
+    fprintf(stderr, "Initializing programmer on port '%s'.\n",
             serialdev.c_str());
     ok &= programmer.connect(&port);
     if (!ok)
@@ -457,16 +462,13 @@ int main(int argc, char** argv)
 
     // Instruct user to insert chip
     if (icsp)
-      fprintf(stdout, "Accessing chip connected to ICSP port.\n");
+      fprintf(stderr, "Accessing chip connected to ICSP port.\n");
     else
     {
       ok &= programmer.waitUntilChipInSocket();
       if (!ok)
         break;
     }
-
-    if (outhex.empty())
-      fputc('\n', stdout);
 
     if (program_rom)
     {
@@ -475,7 +477,7 @@ int main(int argc, char** argv)
       if (!outhex.empty())
         ok &= hex.loadRAW(programmer.properties().rom_base, data);
       else
-        logdata(data);
+        logdata(stdout, data);
     }
     else if (program_eeprom)
     {
@@ -484,7 +486,7 @@ int main(int argc, char** argv)
       if (!outhex.empty())
         ok &= hex.loadRAW(programmer.properties().eeprom_base, data);
       else
-        logdata(data);
+        logdata(stdout, data);
     }
     else if (program_config)
     {
@@ -495,7 +497,7 @@ int main(int argc, char** argv)
     {
       ok &= hex.saveHEX(outhex, !hex_big);
       if (ok)
-        fprintf(stdout, "Succeeded to generate HEX.\n");
+        fprintf(stderr, "Succeeded to generate HEX.\n");
       else
         fprintf(stderr, "Operation aborted.\n");
     }
@@ -513,7 +515,7 @@ int main(int argc, char** argv)
     if (!ok)
       break;
 
-    fprintf(stdout, "Initializing programmer on port '%s'.\n",
+    fprintf(stderr, "Initializing programmer on port '%s'.\n",
             serialdev.c_str());
     ok &= programmer.connect(&port);
     if (!ok)
@@ -526,16 +528,16 @@ int main(int argc, char** argv)
 
     // Instruct user to insert chip
     if (icsp)
-      fprintf(stdout, "Accessing chip connected to ICSP port.\n");
+      fprintf(stderr, "Accessing chip connected to ICSP port.\n");
     else
       programmer.waitUntilChipInSocket();
 
-    fprintf(stdout, "Erasing Chip\n");
+    fprintf(stderr, "Erasing Chip\n");
     ok &= programmer.eraseChip();
     if (!ok)
-      fprintf(stdout, "Erasure failed.\n");
+      fprintf(stderr, "Erasure failed.\n");
     else
-      fprintf(stdout, "Erasure succeeded.\n");
+      fprintf(stderr, "Erasure succeeded.\n");
 
     programmer.disconnect();
     break;
@@ -556,7 +558,7 @@ int main(int argc, char** argv)
     if (!ok)
       break;
 
-    fprintf(stdout, "Initializing programmer on port '%s'.\n",
+    fprintf(stderr, "Initializing programmer on port '%s'.\n",
             serialdev.c_str());
     ok &= programmer.connect(&port);
     if (!ok)
@@ -584,7 +586,7 @@ int main(int argc, char** argv)
     if (!ok)
       break;
 
-    fprintf(stdout, "Initializing programmer on port '%s'.\n",
+    fprintf(stderr, "Initializing programmer on port '%s'.\n",
             serialdev.c_str());
     ok &= programmer.connect(&port);
     if (!ok)
@@ -606,7 +608,7 @@ int main(int argc, char** argv)
     if (!ok)
       break;
 
-    fprintf(stdout, "Initializing programmer on port '%s'.\n",
+    fprintf(stderr, "Initializing programmer on port '%s'.\n",
             serialdev.c_str());
     ok &= programmer.connect(&port);
     if (!ok)
@@ -634,7 +636,7 @@ int main(int argc, char** argv)
       if (!ok)
         break;
 
-      fprintf(stdout, "Converting HEX segment from address %X to raw data.\n",
+      fprintf(stderr, "Converting HEX segment from address %X to raw data.\n",
               range_beg);
 
       // range ends are included, i.e 0000-0FFF counts 1000 bytes
@@ -652,9 +654,9 @@ int main(int argc, char** argv)
       ok &= (fwrite(data.data(), data.size(), 1, fb) == 1);
       fclose(fb);
       if (!ok)
-        fputs("Operation failed.\n", stdout);
+        fputs("Operation failed.\n", stderr);
       else
-        fputs("Operation succeeded.\n", stdout);
+        fputs("Operation succeeded.\n", stderr);
     }
     else if (convert_raw2hex)
     {
@@ -666,7 +668,7 @@ int main(int argc, char** argv)
         break;
       }
 
-      fprintf(stdout, "Converting raw data to HEX at address %X.\n",
+      fprintf(stderr, "Converting raw data to HEX at address %X.\n",
               range_beg);
 
       std::vector<uint8_t> data;
@@ -694,9 +696,9 @@ int main(int argc, char** argv)
       ok &= hex.loadRAW(range_beg, data);
       ok &= hex.saveHEX(outhex, !hex_big);
       if (!ok)
-        fputs("Operation failed.\n", stdout);
+        fputs("Operation failed.\n", stderr);
       else
-        fputs("Operation succeeded.\n", stdout);
+        fputs("Operation succeeded.\n", stderr);
     }
     break;
   }
@@ -729,7 +731,7 @@ std::string dirname(const std::string& filepath)
   return filepath.substr(0, p + 1);
 }
 
-void logdata(const std::vector<uint8_t>& data)
+void logdata(FILE * out, const std::vector<uint8_t>& data)
 {
   unsigned idx = 0, lno = 0;
   size_t sz = data.size();
@@ -740,14 +742,14 @@ void logdata(const std::vector<uint8_t>& data)
     int i;
     for (i = 0; i < 16 && idx < sz; ++i, ++idx)
     {
-      fprintf(stdout, "%02x ", (unsigned char) data[idx]);
+      fprintf(out, "%02x ", (unsigned char) data[idx]);
       str[i] = (data[idx] > 32 && data[idx] < 127 ? data[idx] : '.');
     }
     str[i] = '\0';
-    while (i++ < 16) fputs("   ", stdout);
-    fputc(' ', stdout);
-    fputs(str, stdout);
-    fputc('\n', stdout);
+    while (i++ < 16) fputs("   ", out);
+    fputc(' ', out);
+    fputs(str, out);
+    fputc('\n', out);
   }
 }
 
@@ -771,7 +773,7 @@ bool load_chip_info(K150::CHIPInfo& info, const std::string& datpath,
     fprintf(stderr, "Chip type '%s' is unknown.\n", chipname.c_str());
     return false;
   }
-  fprintf(stdout, "Chip type %s found in database with ID %s.\n",
+  fprintf(stderr, "Chip type %s found in database with ID %s.\n",
           info.data().chip_name.c_str(), info.data().chip_id.c_str());
   return true;
 }
@@ -817,7 +819,7 @@ bool program_pic(
 
     // Instruct user to insert chip
     if (icsp_mode)
-      fprintf(stdout, "Accessing chip connected to ICSP port.\n");
+      fprintf(stderr, "Accessing chip connected to ICSP port.\n");
     else
       programmer.waitUntilChipInSocket();
 
@@ -825,32 +827,32 @@ bool program_pic(
     if (props.flag_flash_chip &&
             program_rom && program_eeprom && program_config)
     {
-      fprintf(stdout, "Erasing Chip\n");
+      fprintf(stderr, "Erasing Chip\n");
       if (!programmer.eraseChip())
-        fprintf(stdout, "Erasure failed.\n");
+        fprintf(stderr, "Erasure failed.\n");
     }
 
     programmer.cycleProgrammingVoltages();
 
     if (program_rom)
     {
-      fprintf(stdout, "Programming ROM\n");
+      fprintf(stderr, "Programming ROM\n");
       if (!programmer.programROM(rom_data))
-        fprintf(stdout, "ROM programming failed.\n");
+        fprintf(stderr, "ROM programming failed.\n");
     }
 
     if (program_eeprom && props.eeprom_size > 0)
     {
-      fprintf(stdout, "Programming EEPROM\n");
+      fprintf(stderr, "Programming EEPROM\n");
       if (!programmer.programEEPROM(eeprom_data))
-        fprintf(stdout, "EEPROM programming failed.\n");
+        fprintf(stderr, "EEPROM programming failed.\n");
     }
 
     if (program_config)
     {
-      fprintf(stdout, "Programming ID and fuses\n");
+      fprintf(stderr, "Programming ID and fuses\n");
       if (!programmer.programCONFIG(id_data, fuse_values))
-        fprintf(stdout, "Programming ID and fuses failed.\n");
+        fprintf(stderr, "Programming ID and fuses failed.\n");
     }
 
     // Verify programmed data
@@ -859,31 +861,31 @@ bool program_pic(
 
     if (program_rom)
     {
-      fprintf(stdout, "Verifying ROM\n");
+      fprintf(stderr, "Verifying ROM\n");
       if (programmer.readROM(buf) && compare_data(buf, rom_data))
-        fprintf(stdout, "ROM verified.\n");
+        fprintf(stderr, "ROM verified.\n");
       else
       {
-        fprintf(stdout, "ROM verification failed.\n");
+        fprintf(stderr, "ROM verification failed.\n");
         ok = false;
       }
     }
 
     if (program_eeprom && props.eeprom_size > 0)
     {
-      fprintf(stdout, "Verifying EEPROM\n");
+      fprintf(stderr, "Verifying EEPROM\n");
       if (programmer.readEEPROM(buf) && compare_data(buf, eeprom_data))
-        fprintf(stdout, "EEPROM verified.\n");
+        fprintf(stderr, "EEPROM verified.\n");
       else
       {
-        fprintf(stdout, "EEPROM verification failed.\n");
+        fprintf(stderr, "EEPROM verification failed.\n");
         ok = false;
       }
     }
 
     if (ok && props.core_bits == 16 && program_config)
     {
-      fprintf(stdout, "Committing FUSE data.\n");
+      fprintf(stderr, "Committing FUSE data.\n");
       programmer.programCOMMIT_18FXXXX_FUSE();
     }
 
@@ -896,17 +898,17 @@ bool program_pic(
     if (program_rom)
     {
       fprintf(stdout, "\nProgramming ROM\n");
-      logdata(rom_data);
+      logdata(stdout, rom_data);
     }
     if (program_eeprom && props.eeprom_size > 0)
     {
       fprintf(stdout, "\nProgramming EEPROM\n");
-      logdata(eeprom_data);
+      logdata(stdout, eeprom_data);
     }
     if (program_config)
     {
       fprintf(stdout, "\nProgramming ID\n");
-      logdata(id_data);
+      logdata(stdout, id_data);
       fprintf(stdout, "\nProgramming fuses\n");
       for (int i = 0; i < fuse_values.size(); ++i)
         fprintf(stdout, "%04X ", fuse_values[i]);
@@ -943,7 +945,7 @@ bool verify_pic(
 
   // Instruct user to insert chip
   if (icsp_mode)
-    fprintf(stdout, "Accessing chip connected to ICSP port.\n");
+    fprintf(stderr, "Accessing chip connected to ICSP port.\n");
   else
     programmer.waitUntilChipInSocket();
 
@@ -953,24 +955,24 @@ bool verify_pic(
 
   if (program_rom)
   {
-    fprintf(stdout, "Verifying ROM\n");
+    fprintf(stderr, "Verifying ROM\n");
     if (programmer.readROM(buf) && compare_data(buf, rom_data))
-      fprintf(stdout, "ROM verified.\n");
+      fprintf(stderr, "ROM verified.\n");
     else
     {
-      fprintf(stdout, "ROM verification failed.\n");
+      fprintf(stderr, "ROM verification failed.\n");
       ok = false;
     }
   }
 
   if (program_eeprom && props.eeprom_size > 0)
   {
-    fprintf(stdout, "Verifying EEPROM\n");
+    fprintf(stderr, "Verifying EEPROM\n");
     if (programmer.readEEPROM(buf) && compare_data(buf, eeprom_data))
-      fprintf(stdout, "EEPROM verified.\n");
+      fprintf(stderr, "EEPROM verified.\n");
     else
     {
-      fprintf(stdout, "EEPROM verification failed.\n");
+      fprintf(stderr, "EEPROM verification failed.\n");
       ok = false;
     }
   }
@@ -1008,7 +1010,7 @@ bool isblank_pic(
 
   // Instruct user to insert chip
   if (icsp_mode)
-    fprintf(stdout, "Accessing chip connected to ICSP port.\n");
+    fprintf(stderr, "Accessing chip connected to ICSP port.\n");
   else
     programmer.waitUntilChipInSocket();
 
@@ -1018,7 +1020,7 @@ bool isblank_pic(
 
   if (program_rom)
   {
-    fprintf(stdout, "Checking ROM (%d B)\n", 2 * props.rom_size);
+    fprintf(stderr, "Checking ROM (%d B) is blank\n", 2 * props.rom_size);
     ok &= programmer.readROM(buf);
     if (!ok || buf.size() != 2 * props.rom_size)
     {
@@ -1026,14 +1028,14 @@ bool isblank_pic(
       return false;
     }
     if (compare_data(buf, rom_data))
-      fprintf(stdout, "ROM is blank.\n");
+      fprintf(stdout, "TRUE\n");
     else
-      fprintf(stdout, "ROM is NOT blank.\n");
+      fprintf(stdout, "FALSE\n");
   }
 
   if (program_eeprom && props.eeprom_size > 0)
   {
-    fprintf(stdout, "Checking EEPROM (%d B)\n", props.eeprom_size);
+    fprintf(stderr, "Checking EEPROM (%d B) is blank\n", props.eeprom_size);
     ok &= programmer.readEEPROM(buf);
     if (!ok || buf.size() != props.eeprom_size)
     {
@@ -1041,9 +1043,9 @@ bool isblank_pic(
       return false;
     }
     if (compare_data(buf, eeprom_data))
-      fprintf(stdout, "EEPROM is blank.\n");
+      fprintf(stdout, "TRUE\n");
     else
-      fprintf(stdout, "EEPROM is NOT blank.\n");
+      fprintf(stdout, "FALSE\n");
   }
 
   return true;
