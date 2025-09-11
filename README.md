@@ -1,6 +1,6 @@
 ## About
 
-It is a command line for PIC Programmer K150, written in kanguage C99/C++11 and runnable on Linux platforms.
+It is a command line for PIC Programmer K150, written in language C99/C++11 and runnable on Linux platforms.
 
 For now, other tools allow you to use the K150 programmer under Linux. But their programming language is a bit shaky for me.
 So I recreated the tool in C/C++, adding the features I need.
