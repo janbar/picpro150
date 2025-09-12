@@ -978,7 +978,7 @@ bool Programmer::isBlankROM()
       m_buffer.clear();
       while (m_buffer.size() < 1)
         m_port->readData(m_buffer);
-      if (m_buffer[0] != 0xff)
+      if (m_buffer[0] != 'B')
         break;
     }
   }
@@ -999,6 +999,8 @@ bool Programmer::isBlankROM()
   if (c == 'Y')
     return true;
   else if (c == 'N')
+    return false;
+  else if (c == 'C')
     return false;
 
   fprintf(stderr, "Command failed.\n");
