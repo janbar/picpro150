@@ -50,8 +50,8 @@ public:
     std::string socket_image;
     int erase_mode              = 0;
     std::string power_sequence;
-    int program_delay           = 0;
-    int program_tries           = 0;
+    int program_delay           = 1;
+    int program_tries           = 1;
     int over_program            = 0;
     std::string core_type;
     int rom_size                = 0;

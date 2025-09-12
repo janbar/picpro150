@@ -85,6 +85,7 @@ bool CHIPInfo::loaddata(const std::string& datfile, const std::string& chipname)
     return false;
   }
   bool chipfound = false;
+  m_info = CHIP();
   m_info.valid = false;
   m_info.chip_name = upperStr(chipname);
   for (;;)
