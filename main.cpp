@@ -132,6 +132,7 @@ enum Operation {
   PROGRAM   = 6,
   VERIFY    = 7,
   ISBLANK   = 8,
+  PING      = 9,
 };
 
 int main(int argc, char** argv)
@@ -256,6 +257,10 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
       }
       op = DUMP;
+    }
+    else if (op == NONE && ::strcmp(argv[n], "ping") == 0)
+    {
+      op = PING;
     }
     else if (op == NONE && ::strcmp(argv[n], "erase") == 0)
     {
@@ -407,6 +412,14 @@ int main(int argc, char** argv)
   case NONE:
     fputs("Use option -h or --help to print usage.\n", stderr);
     break;
+
+  case PING:
+  {
+    ok &= programmer.connect(&port);
+    if (ok)
+      programmer.disconnect();
+    break;
+  }
 
   case DRYRUN:
   {

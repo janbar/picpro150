@@ -59,6 +59,8 @@ Actions
   dryrun <filter> -t <CHIP_NAME> -i <HEX_PATH> [ --hexbig ]
       Run "program" action without actually performing it.
 
+  ping -p <PORT>
+      Test the connection to the programmer.
   program <filter> -t <CHIP_NAME> -i <HEX_PATH> -p <PORT> [ --hexbig ]
       Program the CHIP for the given filter area: all | rom | eeprom | config.
       Filter "all" will erase the CHIP before programming all areas of CHIP.
