@@ -119,7 +119,7 @@ public:
   bool readCONFIG();
   bool readROM(std::vector<uint8_t>& data);
   bool readEEPROM(std::vector<uint8_t>& data);
-  
+
 private:
   COMPort * m_port = nullptr;
   std::vector<uint8_t> m_buffer;

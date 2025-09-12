@@ -605,6 +605,9 @@ bool Programmer::programROM(const std::vector<uint8_t>& data)
 
   for (int v = 0; v < data.size(); v += 32)
   {
+    fputc('.', stderr);
+    fflush(stderr);
+
     msg.clear();
     for (int i = 0; i < 32; ++i)
       msg.push_back(data[v + i]);
@@ -625,10 +628,12 @@ bool Programmer::programROM(const std::vector<uint8_t>& data)
 
     if (m_buffer[0] != 'Y')
     {
-      fprintf(stderr, "Command failed.\n");
+      fprintf(stderr, "\nCommand failed.\n");
       return false;
     }
   }
+
+  fputc('\n', stderr);
 
   try
   {
@@ -696,6 +701,9 @@ bool Programmer::programEEPROM(const std::vector<uint8_t>& data)
 
   for (int v = 0; v < data.size(); v += 2)
   {
+    fputc('.', stderr);
+    fflush(stderr);
+
     msg.clear();
     msg.push_back(data[v]);
     msg.push_back(data[v + 1]);
@@ -716,10 +724,12 @@ bool Programmer::programEEPROM(const std::vector<uint8_t>& data)
 
     if (m_buffer[0] != 'Y')
     {
-      fprintf(stderr, "Command failed.\n");
+      fprintf(stderr, "\nCommand failed.\n");
       return false;
     }
   }
+
+  fputc('\n', stderr);
 
   msg.clear();
   msg.push_back(0);
