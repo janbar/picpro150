@@ -41,8 +41,8 @@ typedef struct
   int config_base;    // config base address
 } CORE_TYPE;
 static CORE_TYPE CORE_TYPE_LIST[] = {
-  { "BIT16_A",      1,    16,   0x000000,   0x00f000,   0x300000, },
-  { "BIT16_B",      2,    16,   0x000000,   0x00f000,   0x300000, },
+  { "BIT16_A",      1,    16,   0x000000,   0xf00000,   0x300000, },
+  { "BIT16_B",      2,    16,   0x000000,   0xf00000,   0x300000, },
   { "BIT14_G",      3,    14,   0x000000,   0x004200,   0x00400e, },
   { "BIT12_A",      4,    12,   0x000000,   0x004200,   0x00400e, },
   { "BIT14_A",      5,    14,   0x000000,   0x004200,   0x00400e, },
@@ -53,7 +53,7 @@ static CORE_TYPE CORE_TYPE_LIST[] = {
   { "BIT14_F",      10,   14,   0x000000,   0x004200,   0x00400e, },
   { "BIT12_B",      11,   12,   0x000000,   0x004200,   0x00400e, },
   { "BIT12_C",      12,   12,   0x000000,   0x004200,   0x00400e, },
-  { "BIT16_C",      13,   16,   0x000000,   0x00f000,   0x300000, },
+  { "BIT16_C",      13,   16,   0x000000,   0xf00000,   0x300000, },
   { nullptr, 0, 0, 0, 0, 0, }
 };
 
@@ -1050,7 +1050,7 @@ bool Programmer::isBlankEEPROM()
   return false;
 }
 
-bool Programmer::readCONFIG()
+bool Programmer::readCONFIG(std::vector<int>& fuses)
 {
   if (!commandStart())
     return false;
@@ -1095,16 +1095,19 @@ bool Programmer::readCONFIG()
   if (m_debug)
     logbuffer(stderr);
 
-  fprintf(stdout, "Chip ID: %02X%02X\n", m_buffer[1], m_buffer[0]);
-  fprintf(stdout, "Prog ID: %02X %02X %02X %02X %02X %02X %02X %02X\n",
+  fprintf(stderr, "Chip ID: %02X%02X\n", m_buffer[1], m_buffer[0]);
+  fprintf(stderr, "IDs    : %02X %02X %02X %02X %02X %02X %02X %02X\n",
           m_buffer[2], m_buffer[3], m_buffer[4], m_buffer[5],
           m_buffer[6], m_buffer[7], m_buffer[8], m_buffer[9]);
   if (m_props.flag_calibration_value_in_rom)
-    fprintf(stdout, "Cal    : %02X%02X\n", m_buffer[25], m_buffer[24]);
-  fprintf(stdout, "Fuses  :");
+    fprintf(stderr, "Cal    : %02X%02X\n", m_buffer[25], m_buffer[24]);
+  fprintf(stderr, "Fuses  :");
   for (int i = 0; i < m_props.fuse_blank.size(); i += 2)
-    fprintf(stdout, " %02X%02X", m_buffer[i + 11], m_buffer[i + 10]);
-  fputc('\n', stdout);
+  {
+    fprintf(stderr, " %02X%02X", m_buffer[i + 11], m_buffer[i + 10]);
+    fuses.push_back(m_buffer[i + 10] | (m_buffer[i + 11] << 8));
+  }
+  fputc('\n', stderr);
 
   if (!setProgrammingVoltages(false))
     return false;

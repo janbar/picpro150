@@ -47,11 +47,6 @@ void logdata(
         const std::vector<uint8_t>& data
 );
 
-bool compare_data(
-        std::vector<uint8_t> first,
-        std::vector<uint8_t> second
-);
-
 bool load_chip_info(
         K150::CHIPInfo& info,
         const std::string& datpath,
@@ -148,7 +143,7 @@ int main(int argc, char** argv)
   Operation op = NONE;
   bool debug = false;
   bool icsp = false;
-  bool hex_big = false;
+  bool swab = false;
   bool program_rom = false;
   bool program_eeprom = false;
   bool program_config = false;
@@ -175,8 +170,8 @@ int main(int argc, char** argv)
       datpath.assign(argv[++n]);
     else if (::strcmp(argv[n], "--icsp") == 0)
       icsp = true;
-    else if (::strcmp(argv[n], "--hexbig") == 0)
-      hex_big = true;
+    else if (::strcmp(argv[n], "--swab") == 0)
+      swab = true;
     else if (::strcmp(argv[n], "-h") == 0 || ::strcmp(argv[n], "--help") == 0)
     {
       fwrite(usage_txt, usage_txt_len, 1, stdout);
@@ -383,7 +378,7 @@ int main(int argc, char** argv)
     fprintf(stderr, ">>> NEWHEX=%s\n", newhex.c_str());
     fprintf(stderr, ">>> OUTHEX=%s\n", outhex.c_str());
     fprintf(stderr, ">>> ICSP=%s\n", (icsp ? "true" : "false"));
-    fprintf(stderr, ">>> HEX_BIG=%s\n", (hex_big ? "true" : "false"));
+    fprintf(stderr, ">>> SWAB=%s\n", (swab ? "true" : "false"));
     fprintf(stderr, ">>> RANGE_BEG=%08X\n", range_beg);
     fprintf(stderr, ">>> RANGE_END=%08X\n", range_end);
     fprintf(stderr, ">>> RANGE_BLANK=%04X\n", range_blank);
@@ -425,7 +420,7 @@ int main(int argc, char** argv)
   {
     K150::HexData hex;
     hex.setDebug(debug);
-    ok &= hex.loadHEX(newhex, !hex_big);
+    ok &= hex.loadHEX(newhex);
     if (!ok)
       break;
 
@@ -448,7 +443,7 @@ int main(int argc, char** argv)
 
     if (!program_rom && !program_eeprom && !program_config)
     {
-      ok &= hex.loadHEX(newhex, !hex_big);
+      ok &= hex.loadHEX(newhex);
       hex.dumpSegments();
       break;
     }
@@ -483,12 +478,15 @@ int main(int argc, char** argv)
         break;
     }
 
+    const K150::Programmer::Properties& props = programmer.properties();
+
     if (program_rom)
     {
       std::vector<uint8_t> data;
       ok &= programmer.readROM(data);
       if (!outhex.empty())
-        ok &= hex.loadRAW(programmer.properties().rom_base, data);
+        // ROM word is LE for all cores, so swap bytes
+        ok &= hex.loadRAW(props.rom_base, data, true);
       else
         logdata(stdout, data);
     }
@@ -498,32 +496,47 @@ int main(int argc, char** argv)
       ok &= programmer.readEEPROM(data);
       if (!outhex.empty())
       {
-        // convert byte to word
-        std::vector<uint8_t> b16;
-        b16.reserve(2 * data.size());
-        for (uint8_t b : data)
+        switch (props.core_bits)
         {
-          b16.push_back(0);
-          b16.push_back(b);
+        case 12:
+        case 14:
+          ok &= hex.loadRAW_LE8(props.eeprom_base, data);
+          break;
+        case 16:
+          ok &= hex.loadRAW(props.eeprom_base, data, false);
+          break;
+        default:
+          ok = false;
+          fprintf(stderr, "Core bits not supported (%d).\n", props.core_bits);
         }
-        ok &= hex.loadRAW(programmer.properties().eeprom_base, b16);
       }
       else
         logdata(stdout, data);
     }
     else if (program_config)
     {
-      ok &= programmer.readCONFIG();
+      std::vector<int> fuses;
+      ok &= programmer.readCONFIG(fuses);
+      if (ok && !outhex.empty())
+      {
+        std::vector<uint8_t> data;
+        for (int f : fuses)
+        {
+          data.push_back((f >> 8) & 0xff);
+          data.push_back((f & 0xff));
+        }
+        ok &= hex.loadRAW(props.config_base, data, true);
+      }
     }
 
     if (ok && !outhex.empty())
     {
-      ok &= hex.saveHEX(outhex, !hex_big);
-      if (ok)
-        fprintf(stderr, "Succeeded to generate HEX.\n");
-      else
-        fprintf(stderr, "Operation aborted.\n");
+      ok &= hex.saveHEX(outhex);
     }
+    if (ok)
+      fprintf(stderr, "Operation succeeded.\n");
+    else
+      fprintf(stderr, "Operation aborted.\n");
 
     programmer.disconnect();
     break;
@@ -570,7 +583,7 @@ int main(int argc, char** argv)
   {
     K150::HexData hex;
     hex.setDebug(debug);
-    ok &= hex.loadHEX(newhex, !hex_big);
+    ok &= hex.loadHEX(newhex);
     if (!ok)
       break;
 
@@ -598,7 +611,7 @@ int main(int argc, char** argv)
   {
     K150::HexData hex;
     hex.setDebug(debug);
-    ok &= hex.loadHEX(newhex, !hex_big);
+    ok &= hex.loadHEX(newhex);
     if (!ok)
       break;
 
@@ -655,7 +668,7 @@ int main(int argc, char** argv)
     {
       K150::HexData hex;
       hex.setDebug(debug);
-      ok &= hex.loadHEX(newhex, !hex_big);
+      ok &= hex.loadHEX(newhex);
       if (!ok)
         break;
 
@@ -666,7 +679,7 @@ int main(int argc, char** argv)
       std::vector<uint8_t> data = hex.rangeOfData(
               range_beg,
               (range_end - range_beg + 1) / 2,
-              range_blank);
+              range_blank, swab);
       FILE * fb = fopen(outhex.c_str(), "wb");
       if (fb == nullptr)
       {
@@ -716,8 +729,8 @@ int main(int argc, char** argv)
       }
       K150::HexData hex;
       hex.setDebug(debug);
-      ok &= hex.loadRAW(range_beg, data);
-      ok &= hex.saveHEX(outhex, !hex_big);
+      ok &= hex.loadRAW(range_beg, data, swab);
+      ok &= hex.saveHEX(outhex);
       if (!ok)
         fputs("Operation failed.\n", stderr);
       else
@@ -776,18 +789,6 @@ void logdata(FILE * out, const std::vector<uint8_t>& data)
   }
 }
 
-bool compare_data(std::vector<uint8_t> first, std::vector<uint8_t> second)
-{
-  if (first.size() != second.size())
-    return false;
-  for (int i = 0; i < first.size(); ++i)
-  {
-    if (first[i] != second[i])
-      return false;
-  }
-  return true;
-}
-
 bool load_chip_info(K150::CHIPInfo& info, const std::string& datpath,
         const std::string& chipname)
 {
@@ -814,24 +815,36 @@ bool program_pic(
   const K150::Programmer::Properties& props = programmer.properties();
 
   // create byte-level data for ROM
-  std::vector<uint8_t> rom_data = hex.rangeOfData(props.rom_base, props.rom_size, props.rom_blank);
+  // ROM word is LE for all cores, so swap bytes
+  std::vector<uint8_t> rom_data = hex.rangeOfData(props.rom_base, props.rom_size, props.rom_blank, true);
 
   // create byte-level data from EEPROM
   std::vector<uint8_t> eeprom_data;
-  eeprom_data.reserve(props.eeprom_size);
+  switch (props.core_bits)
   {
-    std::vector<uint8_t> b16 = hex.rangeOfData(props.eeprom_base, props.eeprom_size, 0x00ff);
-    for (int i = 0; i < b16.size(); i += 2)
-      eeprom_data.push_back(b16[i + 1]);
+  case 12:
+  case 14:
+  {
+    eeprom_data.reserve(props.eeprom_size);
+    std::vector<uint8_t> tmp = hex.rangeOfData(props.eeprom_base, props.eeprom_size, 0xffff, false);
+    for (int i = 0; i < tmp.size(); i += 2)
+      eeprom_data.push_back(tmp[i]); // lsb
+    break;
+  }
+  case 16:
+    eeprom_data = hex.rangeOfData(props.eeprom_base, props.eeprom_size / 2, 0xffff, false);
+    break;
+  default:
+    fprintf(stderr, "Core bits not supported (%d).\n", props.core_bits);
+    return false;
   }
 
   std::vector<uint8_t> id_data = ID;
 
-  // Pull fuse data from config records, and incorporate into the
-  // default setting
+  // Pull fuse data from config records, and incorporate into default setting
+  // it expects fuse word as LE, so swap bytes
   std::vector<int> fuse_values = props.fuse_blank;
-  std::vector<uint8_t> fuse_data = hex.rangeOfData(props.config_base, props.fuse_blank.size(), props.rom_blank);
-
+  std::vector<uint8_t> fuse_data = hex.rangeOfData(props.config_base, props.fuse_blank.size(), props.rom_blank, true);
   fuse_values[0] = (fuse_data[0] << 8) | (fuse_data[1]);
 
   // If write mode is active, program the ROM, EEPROM, ID and fuses
@@ -879,13 +892,13 @@ bool program_pic(
     }
 
     // Verify programmed data
-    std::vector<uint8_t> buf;
     bool ok = true;
 
     if (program_rom)
     {
       fprintf(stderr, "Verifying ROM\n");
-      if (programmer.readROM(buf) && compare_data(buf, rom_data))
+      std::vector<uint8_t> buf;
+      if (programmer.readROM(buf) && buf == rom_data)
         fprintf(stderr, "ROM verified.\n");
       else
       {
@@ -897,7 +910,8 @@ bool program_pic(
     if (program_eeprom && props.eeprom_size > 0)
     {
       fprintf(stderr, "Verifying EEPROM\n");
-      if (programmer.readEEPROM(buf) && compare_data(buf, eeprom_data))
+      std::vector<uint8_t> buf;
+      if (programmer.readEEPROM(buf) && buf == eeprom_data)
         fprintf(stderr, "EEPROM verified.\n");
       else
       {
@@ -913,7 +927,16 @@ bool program_pic(
     }
 
     if (ok && program_config)
-      programmer.readCONFIG();
+    {
+      std::vector<int> buf;
+      if (programmer.readCONFIG(buf) && buf == fuse_values)
+        fprintf(stderr, "CONFIG verified.\n");
+      else
+      {
+        fprintf(stderr, "CONFIG verification failed.\n");
+        ok = false;
+      }
+    }
   }
   else
   {
@@ -952,15 +975,28 @@ bool verify_pic(
   const K150::Programmer::Properties& props = programmer.properties();
 
   // create byte-level data for ROM
-  std::vector<uint8_t> rom_data = hex.rangeOfData(props.rom_base, props.rom_size, props.rom_blank);
+  // ROM word is LE for all cores, so swap bytes
+  std::vector<uint8_t> rom_data = hex.rangeOfData(props.rom_base, props.rom_size, props.rom_blank, true);
 
   // create byte-level data from EEPROM
   std::vector<uint8_t> eeprom_data;
-  eeprom_data.reserve(props.eeprom_size);
+  switch (props.core_bits)
   {
-    std::vector<uint8_t> b16 = hex.rangeOfData(props.eeprom_base, props.eeprom_size, 0xffff);
-    for (int i = 0; i < b16.size(); i += 2)
-      eeprom_data.push_back(b16[i + 1]);
+  case 12:
+  case 14:
+  {
+    eeprom_data.reserve(props.eeprom_size);
+    std::vector<uint8_t> tmp = hex.rangeOfData(props.eeprom_base, props.eeprom_size, 0xffff, false);
+    for (int i = 0; i < tmp.size(); i += 2)
+      eeprom_data.push_back(tmp[i]); // lsb
+    break;
+  }
+  case 16:
+    eeprom_data = hex.rangeOfData(props.eeprom_base, props.eeprom_size / 2, 0xffff, false);
+    break;
+  default:
+    fprintf(stderr, "Core bits not supported (%d).\n", props.core_bits);
+    return false;
   }
 
   // Initialize programming variables
@@ -973,13 +1009,13 @@ bool verify_pic(
     programmer.waitUntilChipInSocket();
 
   // Verify programmed data
-  std::vector<uint8_t> buf;
   bool ok = true;
 
   if (program_rom)
   {
     fprintf(stderr, "Verifying ROM\n");
-    if (programmer.readROM(buf) && compare_data(buf, rom_data))
+    std::vector<uint8_t> buf;
+    if (programmer.readROM(buf) && buf == rom_data)
       fprintf(stderr, "ROM verified.\n");
     else
     {
@@ -991,7 +1027,8 @@ bool verify_pic(
   if (program_eeprom && props.eeprom_size > 0)
   {
     fprintf(stderr, "Verifying EEPROM\n");
-    if (programmer.readEEPROM(buf) && compare_data(buf, eeprom_data))
+    std::vector<uint8_t> buf;
+    if (programmer.readEEPROM(buf) && buf == eeprom_data)
       fprintf(stderr, "EEPROM verified.\n");
     else
     {
@@ -1017,16 +1054,11 @@ bool isblank_pic(
 
   K150::HexData hex;
   // create byte-level data for blank ROM
-  std::vector<uint8_t> rom_data = hex.rangeOfData(props.rom_base, props.rom_size, props.rom_blank);
+  // ROM word is LE for all cores, so swap bytes
+  std::vector<uint8_t> rom_data = hex.rangeOfData(props.rom_base, props.rom_size, props.rom_blank, true);
 
   // create byte-level data from blank EEPROM
-  std::vector<uint8_t> eeprom_data;
-  eeprom_data.reserve(props.eeprom_size);
-  {
-    std::vector<uint8_t> b16 = hex.rangeOfData(props.eeprom_base, props.eeprom_size, 0xffff);
-    for (int i = 0; i < b16.size(); i += 2)
-      eeprom_data.push_back(b16[i + 1]);
-  }
+  std::vector<uint8_t> eeprom_data(props.eeprom_size, 0xff);
 
   // Initialize programming variables
   programmer.initializeProgrammingVariables(icsp_mode);
@@ -1050,7 +1082,7 @@ bool isblank_pic(
       fprintf(stderr, "Command failed.\n");
       return false;
     }
-    if (compare_data(buf, rom_data))
+    if (buf == rom_data)
       fprintf(stdout, "TRUE\n");
     else
       fprintf(stdout, "FALSE\n");
@@ -1065,7 +1097,7 @@ bool isblank_pic(
       fprintf(stderr, "Command failed.\n");
       return false;
     }
-    if (compare_data(buf, eeprom_data))
+    if (buf == eeprom_data)
       fprintf(stdout, "TRUE\n");
     else
       fprintf(stdout, "FALSE\n");

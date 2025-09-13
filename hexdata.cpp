@@ -102,7 +102,7 @@ std::vector<uint8_t> HexData::readline(FILE * file)
   return buf;
 }
 
-bool HexData::loadHEX(const std::string& path, bool le /*= true*/)
+bool HexData::loadHEX(const std::string& path)
 {
   FILE * file = fopen(path.c_str(), "r");
   if (file == nullptr)
@@ -168,16 +168,8 @@ bool HexData::loadHEX(const std::string& path, bool le /*= true*/)
         int b2 = hex_to_num(hex, 2);
         sum += b2;
 
-        if (le)
-        {
-          data.push_back(b2);
-          data.push_back(b1);
-        }
-        else
-        {
-          data.push_back(b1);
-          data.push_back(b2);
-        }
+        data.push_back(b1);
+        data.push_back(b2);
       }
       m_segments.insert(std::pair<int, std::vector<uint8_t> >(recaddr, data));
     }
@@ -246,7 +238,7 @@ bool HexData::loadHEX(const std::string& path, bool le /*= true*/)
   return true;
 }
 
-std::string HexData::hexrecord(int& ext_addr, int addr, const std::vector<uint8_t>& data, bool le /*= true*/)
+std::string HexData::hexrecord(int& ext_addr, int addr, const std::vector<uint8_t>& data)
 {
   int sum = 0;
   uint8_t b = 0;
@@ -306,17 +298,9 @@ std::string HexData::hexrecord(int& ext_addr, int addr, const std::vector<uint8_
   // data
   for (int i = 0; i < data.size(); i += 2)
   {
-    if (le)
-    {
-      u8_to_hex(record, data[i + 1]);
-      u8_to_hex(record, data[i]);
-    }
-    else
-    {
-      u8_to_hex(record, data[i]);
-      u8_to_hex(record, data[i + 1]);
-    }
+    u8_to_hex(record, data[i]);
     sum += data[i];
+    u8_to_hex(record, data[i + 1]);
     sum += data[i + 1];
   }
   // CRC
@@ -327,7 +311,7 @@ std::string HexData::hexrecord(int& ext_addr, int addr, const std::vector<uint8_
   return record;
 }
 
-bool HexData::saveHEX(const std::string& path, bool le /*= true*/)
+bool HexData::saveHEX(const std::string& path)
 {
   FILE * file = fopen(path.c_str(), "w");
   if (file == nullptr)
@@ -345,7 +329,7 @@ bool HexData::saveHEX(const std::string& path, bool le /*= true*/)
       size_t d = std::distance(ptr, it->second.end());
       if (d > 16)
         d = 16;
-      std::string rec = hexrecord(ext_addr, addr, std::vector<uint8_t>(ptr, ptr + d), le);
+      std::string rec = hexrecord(ext_addr, addr, std::vector<uint8_t>(ptr, ptr + d));
       fputs(rec.c_str(), file);
       ptr += d;
       addr +=d;
@@ -358,7 +342,7 @@ bool HexData::saveHEX(const std::string& path, bool le /*= true*/)
   return true;
 }
 
-bool HexData::loadRAW(int addr, const std::vector<uint8_t>& data)
+bool HexData::loadRAW(int addr, const std::vector<uint8_t>& data, bool swap_bytes)
 {
   if ((data.size() % 2) != 0)
     return false;
@@ -366,11 +350,42 @@ bool HexData::loadRAW(int addr, const std::vector<uint8_t>& data)
     if ((addr >= e.first && addr < (e.first + e.second.size())) ||
             ((addr + data.size()) > e.first && (addr + data.size()) < (e.first + e.second.size())))
       return false;
-  m_segments.insert(std::pair<int, std::vector<uint8_t> >(addr, data));
+  auto s = m_segments.insert(std::pair<int, std::vector<uint8_t> >(addr, data));
+  if (!s.second)
+    return false;
+  if (swap_bytes)
+  {
+    for (int i = 0; i < data.size(); i += 2)
+    {
+      uint8_t b1 = s.first->second[i];
+      s.first->second[i] = s.first->second[i + 1];
+      s.first->second[i + 1] = b1;
+    }
+  }
   return true;
 }
 
-std::vector<uint8_t> HexData::rangeOfData(int lower_bound, int word_count, int blank_word)
+bool HexData::loadRAW_LE8(int addr, const std::vector<uint8_t>& data)
+{
+  int ws = 2 * data.size();
+  for (auto& e : m_segments)
+    if ((addr >= e.first && addr < (e.first + e.second.size())) ||
+            ((addr + ws) > e.first && (addr + ws) < (e.first + e.second.size())))
+      return false;
+  std::vector<uint8_t> b16;
+  b16.reserve(ws);
+  for (uint8_t b : data)
+  {
+    b16.push_back(b);
+    b16.push_back(0);
+  }
+  auto s = m_segments.insert(std::pair<int, std::vector<uint8_t> >(addr, b16));
+  if (!s.second)
+    return false;
+  return true;
+}
+
+std::vector<uint8_t> HexData::rangeOfData(int lower_bound, int word_count, int blank_word, bool swap_bytes)
 {
   assert((lower_bound % 2) == 0);
 
@@ -412,8 +427,17 @@ std::vector<uint8_t> HexData::rangeOfData(int lower_bound, int word_count, int b
         shift += 2;
       while (shift < it->second.size() && addr < upper_bound)
       {
-        data.push_back(it->second[shift++]);
-        data.push_back(it->second[shift++]);
+        if (swap_bytes)
+        {
+          data.push_back(it->second[shift + 1]);
+          data.push_back(it->second[shift]);
+        }
+        else
+        {
+          data.push_back(it->second[shift]);
+          data.push_back(it->second[shift + 1]);
+        }
+        shift += 2;
         addr += 2;
       }
     }

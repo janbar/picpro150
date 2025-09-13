@@ -116,7 +116,7 @@ public:
   bool isBlankROM();
   bool isBlankEEPROM();
 
-  bool readCONFIG();
+  bool readCONFIG(std::vector<int>& fuses);
   bool readROM(std::vector<uint8_t>& data);
   bool readEEPROM(std::vector<uint8_t>& data);
 

@@ -35,7 +35,7 @@ private:
   static void u8_to_hex(std::string& str, uint8_t u);
   static void logdata(FILE * out, const std::vector<uint8_t>& data);
   static std::vector<uint8_t> readline(FILE * file);
-  std::string hexrecord(int& ext_addr, int addr, const std::vector<uint8_t>& data, bool le = true);
+  std::string hexrecord(int& ext_addr, int addr, const std::vector<uint8_t>& data);
 
 public:
   HexData() : m_debug(false) { }
@@ -43,11 +43,14 @@ public:
 
   void setDebug(bool debug) { m_debug = debug; }
 
-  bool loadHEX(const std::string& path, bool le = true);
-  bool saveHEX(const std::string& path, bool le = true);
-  bool loadRAW(int addr, const std::vector<uint8_t>& data);
+  enum Endianness { LE, BE };
+  
+  bool loadHEX(const std::string& path);
+  bool saveHEX(const std::string& path);
+  bool loadRAW(int addr, const std::vector<uint8_t>& data, bool swap_bytes);
+  bool loadRAW_LE8(int addr, const std::vector<uint8_t>& data);
 
-  std::vector<uint8_t> rangeOfData(int lower_bound, int word_count, int blank_word);
+  std::vector<uint8_t> rangeOfData(int lower_bound, int word_count, int blank_word, bool swap_bytes);
 
   void dumpSegments();
 
