@@ -476,6 +476,7 @@ int main(int argc, char** argv)
       ok &= programmer.waitUntilChipInSocket();
       if (!ok)
         break;
+      ::sleep(1);
     }
 
     const K150::Programmer::Properties& props = programmer.properties();
@@ -566,7 +567,12 @@ int main(int argc, char** argv)
     if (icsp)
       fprintf(stderr, "Accessing chip connected to ICSP port.\n");
     else
-      programmer.waitUntilChipInSocket();
+    {
+      ok &= programmer.waitUntilChipInSocket();
+      if (!ok)
+        break;
+      ::sleep(1);
+    }
 
     fprintf(stderr, "Erasing Chip\n");
     ok &= programmer.eraseChip();
@@ -850,14 +856,23 @@ bool program_pic(
   // If write mode is active, program the ROM, EEPROM, ID and fuses
   if (program)
   {
+    bool ok = true;
+
     // Initialize programming variables
-    programmer.initializeProgrammingVariables(icsp_mode);
+    ok &= programmer.initializeProgrammingVariables(icsp_mode);
+    if (!ok)
+      return false;
 
     // Instruct user to insert chip
     if (icsp_mode)
       fprintf(stderr, "Accessing chip connected to ICSP port.\n");
     else
-      programmer.waitUntilChipInSocket();
+    {
+      ok &= programmer.waitUntilChipInSocket();
+      if (!ok)
+        return false;
+      ::sleep(1);
+    }
 
     // Write ROM, EEPROM, ID and fuses
     if (props.flag_flash_chip &&
@@ -867,8 +882,6 @@ bool program_pic(
       if (!programmer.eraseChip())
         fprintf(stderr, "Erasure failed.\n");
     }
-
-    programmer.cycleProgrammingVoltages();
 
     if (program_rom)
     {
@@ -892,7 +905,6 @@ bool program_pic(
     }
 
     // Verify programmed data
-    bool ok = true;
 
     if (program_rom)
     {
@@ -999,6 +1011,8 @@ bool verify_pic(
     return false;
   }
 
+  bool ok = true;
+
   // Initialize programming variables
   programmer.initializeProgrammingVariables(icsp_mode);
 
@@ -1006,10 +1020,14 @@ bool verify_pic(
   if (icsp_mode)
     fprintf(stderr, "Accessing chip connected to ICSP port.\n");
   else
-    programmer.waitUntilChipInSocket();
+  {
+    ok &= programmer.waitUntilChipInSocket();
+    if (!ok)
+      return false;
+    ::sleep(1);
+  }
 
   // Verify programmed data
-  bool ok = true;
 
   if (program_rom)
   {
@@ -1060,18 +1078,26 @@ bool isblank_pic(
   // create byte-level data from blank EEPROM
   std::vector<uint8_t> eeprom_data(props.eeprom_size, 0xff);
 
+  bool ok = true;
+
   // Initialize programming variables
-  programmer.initializeProgrammingVariables(icsp_mode);
+  ok &= programmer.initializeProgrammingVariables(icsp_mode);
+  if (!ok)
+    return false;
 
   // Instruct user to insert chip
   if (icsp_mode)
     fprintf(stderr, "Accessing chip connected to ICSP port.\n");
   else
-    programmer.waitUntilChipInSocket();
+  {
+    ok &= programmer.waitUntilChipInSocket();
+    if (!ok)
+      return false;
+    ::sleep(1);
+  }
 
   // Verify programmed data
   std::vector<uint8_t> buf;
-  bool ok = true;
 
   if (program_rom)
   {
