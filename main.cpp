@@ -471,7 +471,7 @@ int main(int argc, char** argv)
       break;
 
     // Instruct user to insert chip
-    if (icsp)
+    if (icsp || chip.data().icsp_only)
       fprintf(stderr, "Accessing chip connected to ICSP port.\n");
     else
     {
@@ -568,7 +568,7 @@ int main(int argc, char** argv)
       break;
 
     // Instruct user to insert chip
-    if (icsp)
+    if (icsp || chip.data().icsp_only)
       fprintf(stderr, "Accessing chip connected to ICSP port.\n");
     else
     {
@@ -868,7 +868,7 @@ bool program_pic(
       return false;
 
     // Instruct user to insert chip
-    if (icsp_mode)
+    if (icsp_mode || props.socket_hint.empty())
       fprintf(stderr, "Accessing chip connected to ICSP port.\n");
     else
     {
@@ -957,21 +957,26 @@ bool program_pic(
   else
   {
     // dryrun: only output data
+    if (icsp_mode || props.socket_hint.empty())
+      fprintf(stdout, "\nAccessing chip connected to ICSP port.\n");
+    else
+      fprintf(stdout, "\nInsert chip into socket with pin 1 at %s.\n", props.socket_hint.c_str());
+
     if (program_rom)
     {
-      fprintf(stdout, "\nProgramming ROM\n");
+      fprintf(stdout, "\nProgramming ROM (%06X : %uKB)\n", props.rom_base,  props.rom_size >> 9);
       logdata(stdout, rom_data);
     }
     if (program_eeprom && props.eeprom_size > 0)
     {
-      fprintf(stdout, "\nProgramming EEPROM\n");
+      fprintf(stdout, "\nProgramming EEPROM (%06X : %uB)\n", props.eeprom_base,  props.eeprom_size);
       logdata(stdout, eeprom_data);
     }
     if (program_config)
     {
       fprintf(stdout, "\nProgramming ID\n");
       logdata(stdout, id_data);
-      fprintf(stdout, "\nProgramming fuses\n");
+      fprintf(stdout, "\nProgramming fuses (%06X : %uB)\n", props.config_base, (unsigned) fuse_values.size() << 1);
       for (int i = 0; i < fuse_values.size(); ++i)
         fprintf(stdout, "%04X ", fuse_values[i]);
       fputc('\n', stdout);
@@ -1021,7 +1026,7 @@ bool verify_pic(
   programmer.initializeProgrammingVariables(icsp_mode);
 
   // Instruct user to insert chip
-  if (icsp_mode)
+  if (icsp_mode || props.socket_hint.empty())
     fprintf(stderr, "Accessing chip connected to ICSP port.\n");
   else
   {
@@ -1090,7 +1095,7 @@ bool isblank_pic(
     return false;
 
   // Instruct user to insert chip
-  if (icsp_mode)
+  if (icsp_mode || props.socket_hint.empty())
     fprintf(stderr, "Accessing chip connected to ICSP port.\n");
   else
   {
