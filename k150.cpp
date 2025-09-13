@@ -205,6 +205,9 @@ bool Programmer::configure(const CHIPInfo& info)
   fprintf(stderr, "Load setup for chip %s ... ", info.data().chip_name.c_str());
   fflush(stderr);
 
+  m_props = Properties();
+
+  if (!info.data().icsp_only)
   {
     SOCKET_HINT * ptr = SOCKET_HINT_LIST;
     for (;;)
