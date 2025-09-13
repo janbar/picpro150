@@ -66,7 +66,7 @@ Actions
   erase -t <CHIP_NAME> -p <PORT> [ --icsp ]
       Erase all areas of CHIP, including ROM EEPROM ID and FUSEs.
   dump <filter> -t <CHIP_NAME> -p <PORT> [ --icsp -o <HEX_PATH> ]
-      Read the chip area according to the given filter rom | eeprom | config,
-      Then print out the content, or save it into the given HEX file.
+      Read the chip according to the given filter all | rom | eeprom | config,
+      then print out the content, or save it into the given HEX file.
   isblank <filter> -t <CHIP_NAME> -p <PORT> [ --icsp ]
       Check for memory blank, according to the given filter rom | eeprom.

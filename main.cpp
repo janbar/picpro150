@@ -240,7 +240,9 @@ int main(int argc, char** argv)
     else if (op == NONE && ::strcmp(argv[n], "dump") == 0 && n < argc-1)
     {
       n += 1;
-      if (::strcmp(argv[n], "rom") == 0)
+      if (::strcmp(argv[n], "all") == 0)
+        program_rom = program_eeprom = program_config = true;
+      else if (::strcmp(argv[n], "rom") == 0)
         program_rom = true;
       else if (::strcmp(argv[n], "eeprom") == 0)
         program_eeprom = true;
@@ -491,7 +493,8 @@ int main(int argc, char** argv)
       else
         logdata(stdout, data);
     }
-    else if (program_eeprom)
+
+    if (program_eeprom)
     {
       std::vector<uint8_t> data;
       ok &= programmer.readEEPROM(data);
@@ -514,7 +517,8 @@ int main(int argc, char** argv)
       else
         logdata(stdout, data);
     }
-    else if (program_config)
+
+    if (program_config)
     {
       std::vector<int> fuses;
       ok &= programmer.readCONFIG(fuses);
