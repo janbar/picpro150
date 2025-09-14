@@ -41,6 +41,7 @@ typedef struct
   int config_base;    // config base address
 } CORE_TYPE;
 static CORE_TYPE CORE_TYPE_LIST[] = {
+  { "BIT16_C",      0,    16,   0x000000,   0xf00000,   0x300000, },
   { "BIT16_A",      1,    16,   0x000000,   0xf00000,   0x300000, },
   { "BIT16_B",      2,    16,   0x000000,   0xf00000,   0x300000, },
   { "BIT14_G",      3,    14,   0x000000,   0x004200,   0x00400e, },
@@ -53,7 +54,6 @@ static CORE_TYPE CORE_TYPE_LIST[] = {
   { "BIT14_F",      10,   14,   0x000000,   0x004200,   0x00400e, },
   { "BIT12_B",      11,   12,   0x000000,   0x004200,   0x00400e, },
   { "BIT12_C",      12,   12,   0x000000,   0x004200,   0x00400e, },
-  { "BIT16_C",      13,   16,   0x000000,   0xf00000,   0x300000, },
   { nullptr, 0, 0, 0, 0, 0, }
 };
 
