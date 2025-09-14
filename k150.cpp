@@ -89,6 +89,19 @@ static SOCKET_HINT SOCKET_HINT_LIST[] = {
   { nullptr, nullptr }
 };
 
+static inline void show_progress(FILE * out, unsigned current, unsigned total)
+{
+  static char PROGRESS[8] = { '|', '/', '-', '\\', '|', '/', '-', '\\' };
+  unsigned d = current % 8;
+  if (d == 0 && total != 0)
+    fprintf(stderr, "%c  %u0%%\r", PROGRESS[(current / 8) % 8], (10 * current / total));
+}
+
+static inline void clear_progress()
+{
+  fputs("       \r", stderr);
+}
+
 
 void Programmer::logbuffer(FILE * out)
 {
@@ -608,9 +621,6 @@ bool Programmer::programROM(const std::vector<uint8_t>& data)
 
   for (int v = 0; v < data.size(); v += 32)
   {
-    fputc('.', stderr);
-    fflush(stderr);
-
     msg.clear();
     for (int i = 0; i < 32; ++i)
       msg.push_back(data[v + i]);
@@ -634,9 +644,11 @@ bool Programmer::programROM(const std::vector<uint8_t>& data)
       fprintf(stderr, "\nCommand failed.\n");
       return false;
     }
+
+    show_progress(stderr, v, data.size());
   }
 
-  fputc('\n', stderr);
+  clear_progress();
 
   try
   {
@@ -704,9 +716,6 @@ bool Programmer::programEEPROM(const std::vector<uint8_t>& data)
 
   for (int v = 0; v < data.size(); v += 2)
   {
-    fputc('.', stderr);
-    fflush(stderr);
-
     msg.clear();
     msg.push_back(data[v]);
     msg.push_back(data[v + 1]);
@@ -730,9 +739,11 @@ bool Programmer::programEEPROM(const std::vector<uint8_t>& data)
       fprintf(stderr, "\nCommand failed.\n");
       return false;
     }
+
+    show_progress(stderr, v, data.size());
   }
 
-  fputc('\n', stderr);
+  clear_progress();
 
   msg.clear();
   msg.push_back(0);
@@ -1135,12 +1146,17 @@ bool Programmer::readROM(std::vector<uint8_t>& data)
   {
     m_buffer.clear();
     while (m_buffer.size() < ds)
+    {
       m_port->readData(m_buffer);
+      show_progress(stderr, m_buffer.size(), ds);
+    }
   }
   catch (...)
   {
     return false;
   }
+
+  clear_progress();
 
   if (m_debug)
     logbuffer(stderr);
@@ -1174,12 +1190,17 @@ bool Programmer::readEEPROM(std::vector<uint8_t>& data)
   {
     m_buffer.clear();
     while (m_buffer.size() < m_props.eeprom_size)
+    {
       m_port->readData(m_buffer);
+      show_progress(stderr, m_buffer.size(), m_props.eeprom_size);
+    }
   }
   catch (...)
   {
     return false;
   }
+
+  clear_progress();
 
   if (m_debug)
     logbuffer(stderr);
