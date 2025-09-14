@@ -20,8 +20,6 @@
 
 #include <cassert>
 
-#define HEX_OUT_ENABLE_EXT_SEGMENT_ADDRESS 0
-
 namespace K150
 {
 
@@ -248,30 +246,15 @@ std::string HexData::hexrecord(int& ext_addr, int addr, const std::vector<uint8_
   int ext = (addr >> 16) & 0xffff;
   if (ext != ext_addr)
   {
-    if (ext <= 0xf && 1 == HEX_OUT_ENABLE_EXT_SEGMENT_ADDRESS)
-    {
-      record.append(":02000002");
-      sum += 4;
-      b = (addr >> 12) & 0xff;
-      u8_to_hex(record, b);
-      sum += b;
-      b = (addr >> 4) & 0xff;
-      u8_to_hex(record, b);
-      sum += b;
-      ext_addr = (addr >> 4) & 0xffff;
-    }
-    else
-    {
-      record.append(":02000004");
-      sum += 6;
-      b = (ext >> 8) & 0xff;
-      u8_to_hex(record, b);
-      sum += b;
-      b = ext & 0xff;
-      u8_to_hex(record, b);
-      sum += b;
-      ext_addr = ext << 16;
-    }
+    record.append(":02000004");
+    sum += 6;
+    b = (ext >> 8) & 0xff;
+    u8_to_hex(record, b);
+    sum += b;
+    b = ext & 0xff;
+    u8_to_hex(record, b);
+    sum += b;
+    ext_addr = ext;
     // CRC
     b = (~sum + 1) &0xff;
     u8_to_hex(record, b);
