@@ -30,7 +30,8 @@
 #else
 #define PP150_VERSION "UNDEFINED"
 #endif
-#define PP150_HEADER  "PIC Programmer version " PP150_VERSION " compiled on " __DATE__ " at " __TIME__
+static const char * PP150_HEADER =
+  "PIC Programmer version " PP150_VERSION " compiled on " __DATE__ " at " __TIME__;
 
 //
 // declarations
@@ -644,10 +645,10 @@ int main(int argc, char** argv)
       for (;;)
       {
         char buf[4096];
-        size_t n = fread(buf, 1, sizeof(buf), fb);
-        for (int i = 0; i < n && data.size() < sz; ++i)
+        size_t rc = fread(buf, 1, sizeof(buf), fb);
+        for (int i = 0; i < rc && data.size() < sz; ++i)
           data.push_back(buf[i]);
-        if (n == 0 || data.size() >= sz)
+        if (rc == 0 || data.size() >= sz)
           break;
       }
       fclose(fb);
@@ -1029,12 +1030,12 @@ bool program_pic(
 
     if (program_rom)
     {
-      fprintf(stdout, "\nProgramming ROM (%06X : %uKB)\n", props.rom_base,  props.rom_size >> 9);
+      fprintf(stdout, "\nProgramming ROM (%06X : %dKB)\n", props.rom_base,  props.rom_size >> 9);
       logdata(stdout, rom_data);
     }
     if (program_eeprom && props.eeprom_size > 0)
     {
-      fprintf(stdout, "\nProgramming EEPROM (%06X : %uB)\n", props.eeprom_base,  props.eeprom_size);
+      fprintf(stdout, "\nProgramming EEPROM (%06X : %dB)\n", props.eeprom_base,  props.eeprom_size);
       logdata(stdout, eeprom_data);
     }
     if (program_config)
@@ -1151,13 +1152,6 @@ bool isblank_pic(
   const K150::Programmer::Properties& props = programmer.properties();
 
   K150::HexData hex;
-  // create byte-level data for blank ROM
-  // ROM word is LE for all cores, so swap bytes
-  std::vector<uint8_t> rom_data = hex.rangeOfData(props.rom_base, props.rom_size, props.rom_blank, true);
-
-  // create byte-level data from blank EEPROM
-  std::vector<uint8_t> eeprom_data(props.eeprom_size, 0xff);
-
   bool ok = true;
 
   // Initialize programming variables
@@ -1185,6 +1179,10 @@ bool isblank_pic(
 
   if (program_rom)
   {
+    // create byte-level data for blank ROM
+    // ROM word is LE for all cores, so swap bytes
+    std::vector<uint8_t> rom_data = hex.rangeOfData(props.rom_base, props.rom_size, props.rom_blank, true);
+
     fprintf(stderr, "Checking ROM (%d B) is blank\n", 2 * props.rom_size);
     ok &= programmer.readROM(buf);
     if (!ok || buf.size() != 2 * props.rom_size)
@@ -1199,6 +1197,9 @@ bool isblank_pic(
 
   if (program_eeprom && props.eeprom_size > 0)
   {
+    // create byte-level data from blank EEPROM
+    std::vector<uint8_t> eeprom_data(props.eeprom_size, 0xff);
+
     fprintf(stderr, "Checking EEPROM (%d B) is blank\n", props.eeprom_size);
     ok &= programmer.readEEPROM(buf);
     if (!ok || buf.size() != props.eeprom_size)
