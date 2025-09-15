@@ -53,6 +53,20 @@ bool load_chip_info(
         const std::string& chipname
 );
 
+bool read_pic(
+        K150::Programmer& programmer,
+        bool icsp_mode,
+        bool program_rom,
+        bool program_eeprom,
+        bool program_config,
+        const std::string& outhex
+);
+
+bool erase_pic(
+        K150::Programmer& programmer,
+        bool icsp_mode
+);
+
 bool program_pic(
         K150::Programmer& programmer,
         K150::HexData& hex,
@@ -465,84 +479,8 @@ int main(int argc, char** argv)
     if (!ok)
       break;
 
-    // Initialize programming variables
-    ok &= programmer.initializeProgrammingVariables(icsp);
-    if (!ok)
-      break;
-
-    // Instruct user to insert chip
-    if (icsp || chip.data().icsp_only)
-      fprintf(stderr, "Accessing chip connected to ICSP port.\n");
-    else
-    {
-      ok &= programmer.waitUntilChipInSocket();
-      if (!ok)
-        break;
-      ::sleep(1);
-    }
-
-    const K150::Programmer::Properties& props = programmer.properties();
-
-    if (program_rom)
-    {
-      std::vector<uint8_t> data;
-      ok &= programmer.readROM(data);
-      if (!outhex.empty())
-        // ROM word is LE for all cores, so swap bytes
-        ok &= hex.loadRAW(props.rom_base, data, true);
-      else
-        logdata(stdout, data);
-    }
-
-    if (program_eeprom)
-    {
-      std::vector<uint8_t> data;
-      ok &= programmer.readEEPROM(data);
-      if (!outhex.empty())
-      {
-        switch (props.core_bits)
-        {
-        case 12:
-        case 14:
-          ok &= hex.loadRAW_LE8(props.eeprom_base, data);
-          break;
-        case 16:
-          ok &= hex.loadRAW(props.eeprom_base, data, false);
-          break;
-        default:
-          ok = false;
-          fprintf(stderr, "Core bits not supported (%d).\n", props.core_bits);
-        }
-      }
-      else
-        logdata(stdout, data);
-    }
-
-    if (program_config)
-    {
-      std::vector<int> fuses;
-      ok &= programmer.readCONFIG(fuses);
-      if (ok && !outhex.empty())
-      {
-        std::vector<uint8_t> data;
-        for (int f : fuses)
-        {
-          data.push_back((f >> 8) & 0xff);
-          data.push_back((f & 0xff));
-        }
-        ok &= hex.loadRAW(props.config_base, data, true);
-      }
-    }
-
-    if (ok && !outhex.empty())
-    {
-      ok &= hex.saveHEX(outhex);
-    }
-    if (ok)
-      fprintf(stderr, "Operation succeeded.\n");
-    else
-      fprintf(stderr, "Operation aborted.\n");
-
+    ok &= read_pic(programmer, icsp, program_rom, program_eeprom, program_config, outhex);
+      
     programmer.disconnect();
     break;
   }
@@ -562,28 +500,7 @@ int main(int argc, char** argv)
     if (!ok)
       break;
 
-    // Initialize programming variables
-    ok &= programmer.initializeProgrammingVariables(icsp);
-    if (!ok)
-      break;
-
-    // Instruct user to insert chip
-    if (icsp || chip.data().icsp_only)
-      fprintf(stderr, "Accessing chip connected to ICSP port.\n");
-    else
-    {
-      ok &= programmer.waitUntilChipInSocket();
-      if (!ok)
-        break;
-      ::sleep(1);
-    }
-
-    fprintf(stderr, "Erasing Chip\n");
-    ok &= programmer.eraseChip();
-    if (!ok)
-      fprintf(stderr, "Erasure failed.\n");
-    else
-      fprintf(stderr, "Erasure succeeded.\n");
+    ok &= erase_pic(programmer, icsp);
 
     programmer.disconnect();
     break;
@@ -812,6 +729,142 @@ bool load_chip_info(K150::CHIPInfo& info, const std::string& datpath,
   return true;
 }
 
+bool read_pic(
+        K150::Programmer& programmer,
+        bool icsp_mode,
+        bool program_rom,
+        bool program_eeprom,
+        bool program_config,
+        const std::string& outhex)
+{
+  bool ok = true;
+  const K150::Programmer::Properties& props = programmer.properties();
+  K150::HexData hex;
+
+  // Initialize programming variables
+  ok &= programmer.initializeProgrammingVariables(icsp_mode);
+  if (!ok)
+    return false;
+
+  // Instruct user to insert chip
+  if (icsp_mode || props.socket_hint.empty())
+    fprintf(stderr, "Accessing chip connected to ICSP port.\n");
+  else
+  {
+    ok &= programmer.waitUntilChipInSocket();
+    if (!ok)
+      return false;
+    ::sleep(1);
+  }
+
+  ok &= programmer.setProgrammingVoltages(true);
+  if (!ok)
+    return false;
+
+  if (program_rom)
+  {
+    std::vector<uint8_t> data;
+    ok &= programmer.readROM(data);
+    if (!outhex.empty())
+      // ROM word is LE for all cores, so swap bytes
+      ok &= hex.loadRAW(props.rom_base, data, true);
+    else
+      logdata(stdout, data);
+  }
+
+  if (program_eeprom)
+  {
+    std::vector<uint8_t> data;
+    ok &= programmer.readEEPROM(data);
+    if (!outhex.empty())
+    {
+      switch (props.core_bits)
+      {
+      case 12:
+      case 14:
+        ok &= hex.loadRAW_LE8(props.eeprom_base, data);
+        break;
+      case 16:
+        ok &= hex.loadRAW(props.eeprom_base, data, false);
+        break;
+      default:
+        ok = false;
+        fprintf(stderr, "Core bits not supported (%d).\n", props.core_bits);
+      }
+    }
+    else
+      logdata(stdout, data);
+  }
+
+  if (program_config)
+  {
+    std::vector<int> fuses;
+    ok &= programmer.readCONFIG(fuses);
+    if (ok && !outhex.empty())
+    {
+      std::vector<uint8_t> data;
+      for (int f : fuses)
+      {
+        data.push_back((f >> 8) & 0xff);
+        data.push_back((f & 0xff));
+      }
+      ok &= hex.loadRAW(props.config_base, data, true);
+    }
+  }
+
+  if (ok && !outhex.empty())
+  {
+    ok &= hex.saveHEX(outhex);
+  }
+  if (ok)
+    fprintf(stderr, "Operation succeeded.\n");
+  else
+    fprintf(stderr, "Operation aborted.\n");
+
+  ok &= programmer.setProgrammingVoltages(false);
+
+  return ok;
+}
+
+bool erase_pic(
+        K150::Programmer& programmer,
+        bool icsp_mode)
+{
+  bool ok = true;
+  const K150::Programmer::Properties& props = programmer.properties();
+
+  // Initialize programming variables
+  ok &= programmer.initializeProgrammingVariables(icsp_mode);
+  if (!ok)
+    return false;
+
+  // Instruct user to insert chip
+  if (icsp_mode || props.socket_hint.empty())
+    fprintf(stderr, "Accessing chip connected to ICSP port.\n");
+  else
+  {
+    ok &= programmer.waitUntilChipInSocket();
+    if (!ok)
+      return false;
+    ::sleep(1);
+  }
+
+  ok &= programmer.setProgrammingVoltages(true);
+  if (!ok)
+    return false;
+
+  fprintf(stderr, "Erasing Chip\n");
+  ok &= programmer.eraseChip();
+  if (!ok)
+    fprintf(stderr, "Erasure failed.\n");
+  else
+    fprintf(stderr, "Erasure succeeded.\n");
+
+  ok &= programmer.setProgrammingVoltages(false);
+
+  return ok;
+}
+
 bool program_pic(
         K150::Programmer& programmer,
         K150::HexData& hex,
@@ -857,11 +910,11 @@ bool program_pic(
   std::vector<uint8_t> fuse_data = hex.rangeOfData(props.config_base, props.fuse_blank.size(), props.rom_blank, true);
   fuse_values[0] = (fuse_data[0] << 8) | (fuse_data[1]);
 
+  bool ok = true;
+
   // If write mode is active, program the ROM, EEPROM, ID and fuses
   if (program)
   {
-    bool ok = true;
-
     // Initialize programming variables
     ok &= programmer.initializeProgrammingVariables(icsp_mode);
     if (!ok)
@@ -878,6 +931,10 @@ bool program_pic(
       ::sleep(1);
     }
 
+    ok &= programmer.setProgrammingVoltages(true);
+    if (!ok)
+      return false;
+
     // Write ROM, EEPROM, ID and fuses
     if (props.flag_flash_chip &&
             program_rom && program_eeprom && program_config)
@@ -885,6 +942,8 @@ bool program_pic(
       fprintf(stderr, "Erasing Chip\n");
       if (!programmer.eraseChip())
         fprintf(stderr, "Erasure failed.\n");
+      if (!programmer.cycleProgrammingVoltages())
+        return false;
     }
 
     if (program_rom)
@@ -953,6 +1012,8 @@ bool program_pic(
         ok = false;
       }
     }
+
+    ok &= programmer.setProgrammingVoltages(false);
   }
   else
   {
@@ -983,7 +1044,7 @@ bool program_pic(
     }
   }
 
-  return true;
+  return ok;
 }
 
 bool verify_pic(
@@ -1038,6 +1099,10 @@ bool verify_pic(
 
   // Verify programmed data
 
+  ok &= programmer.setProgrammingVoltages(true);
+  if (!ok)
+    return false;
+
   if (program_rom)
   {
     fprintf(stderr, "Verifying ROM\n");
@@ -1064,7 +1129,9 @@ bool verify_pic(
     }
   }
 
-  return true;
+  ok &= programmer.setProgrammingVoltages(false);
+
+  return ok;
 }
 
 bool isblank_pic(
@@ -1108,6 +1175,10 @@ bool isblank_pic(
   // Verify programmed data
   std::vector<uint8_t> buf;
 
+  ok &= programmer.setProgrammingVoltages(true);
+  if (!ok)
+    return false;
+
   if (program_rom)
   {
     fprintf(stderr, "Checking ROM (%d B) is blank\n", 2 * props.rom_size);
@@ -1115,9 +1186,8 @@ bool isblank_pic(
     if (!ok || buf.size() != 2 * props.rom_size)
     {
       fprintf(stderr, "Command failed.\n");
-      return false;
     }
-    if (buf == rom_data)
+    else if (buf == rom_data)
       fprintf(stdout, "TRUE\n");
     else
       fprintf(stdout, "FALSE\n");
@@ -1130,13 +1200,14 @@ bool isblank_pic(
     if (!ok || buf.size() != props.eeprom_size)
     {
       fprintf(stderr, "Command failed.\n");
-      return false;
     }
-    if (buf == eeprom_data)
+    else if (buf == eeprom_data)
       fprintf(stdout, "TRUE\n");
     else
       fprintf(stdout, "FALSE\n");
   }
 
-  return true;
+  ok &= programmer.setProgrammingVoltages(false);
+
+  return ok;
 }

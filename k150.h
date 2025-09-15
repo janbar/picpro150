@@ -127,6 +127,7 @@ private:
   uint8_t m_version;
   std::string m_protocol;
   Properties m_props;
+  bool m_VPPEnabled = false; // current state of programming voltage
 };
 
 } // namespace K150

@@ -20,6 +20,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <cassert>
 
 #include <sys/ioctl.h> //ioctl() call defenitions
 #include <unistd.h>
@@ -548,6 +549,9 @@ bool Programmer::setProgrammingVoltages(bool onoff)
     return false;
   }
 
+  // save state
+  m_VPPEnabled = onoff;
+
   return true;
 }
 
@@ -573,16 +577,24 @@ bool Programmer::cycleProgrammingVoltages()
 
   if (m_buffer[0] != 'V')
   {
+    // reset state
+    m_VPPEnabled = false;
     fprintf(stderr, "Command failed.\n");
     return false;
   }
 
   commandEnd();
+
+  // save state
+  m_VPPEnabled = true;
+
   return true;
 }
 
 bool Programmer::programROM(const std::vector<uint8_t>& data)
 {
+  assert(m_VPPEnabled == true);
+
   int wsz = data.size() / 2;
   if (wsz > m_props.rom_size || ((wsz * 2) % 32) != 0)
   {
@@ -591,8 +603,6 @@ bool Programmer::programROM(const std::vector<uint8_t>& data)
   }
 
   if (!commandStart())
-    return false;
-  if (!setProgrammingVoltages(true))
     return false;
 
   std::vector<uint8_t> msg = { 7 };
@@ -670,15 +680,14 @@ bool Programmer::programROM(const std::vector<uint8_t>& data)
     return false;
   }
 
-  if (!setProgrammingVoltages(false))
-    return false;
-
   commandEnd();
   return true;
 }
 
 bool Programmer::programEEPROM(const std::vector<uint8_t>& data)
 {
+  assert(m_VPPEnabled == true);
+
   if (data.size() > m_props.eeprom_size || (data.size() % 2) != 0)
   {
     fprintf(stderr, "Invalid EEPROM size (%d).\n", (int) data.size());
@@ -686,8 +695,6 @@ bool Programmer::programEEPROM(const std::vector<uint8_t>& data)
   }
 
   if (!commandStart())
-    return false;
-  if (!setProgrammingVoltages(true))
     return false;
 
   std::vector<uint8_t> msg = { 8 };
@@ -770,15 +777,14 @@ bool Programmer::programEEPROM(const std::vector<uint8_t>& data)
     return false;
   }
 
-  if (!setProgrammingVoltages(false))
-    return false;
-
   commandEnd();
   return true;
 }
 
 bool Programmer::programCONFIG(const std::vector<uint8_t>& id, const std::vector<int>& fuses)
 {
+  assert(m_VPPEnabled == true);
+
   if (!commandStart())
     return false;
 
@@ -828,9 +834,6 @@ bool Programmer::programCONFIG(const std::vector<uint8_t>& id, const std::vector
     break;
   }
 
-  if (!setProgrammingVoltages(true))
-    return false;
-
   m_port->writeData(msg);
   try
   {
@@ -852,23 +855,19 @@ bool Programmer::programCONFIG(const std::vector<uint8_t>& id, const std::vector
     return false;
   }
 
-  if (!setProgrammingVoltages(false))
-    return false;
-
   commandEnd();
   return true;
 }
 
 bool Programmer::programCOMMIT_18FXXXX_FUSE()
 {
+  assert(m_VPPEnabled == true);
+
   if (m_props.core_bits != 16)
     return true;
   // core 16 bits (PIC18F) requires additional operations
 
   if (!commandStart())
-    return false;
-
-  if (!setProgrammingVoltages(true))
     return false;
 
   std::vector<uint8_t> msg = { 17 }; // PROGRAM 18FXXXX FUSE
@@ -893,15 +892,14 @@ bool Programmer::programCOMMIT_18FXXXX_FUSE()
     return false;
   }
 
-  if (!setProgrammingVoltages(false))
-    return false;
-
   commandEnd();
   return true;
 }
 
 bool Programmer::programCalibration(int cal, int fuse)
 {
+  assert(m_VPPEnabled == true);
+
   if (!commandStart())
     return false;
 
@@ -910,9 +908,6 @@ bool Programmer::programCalibration(int cal, int fuse)
   msg.push_back((cal & 0x00ff));
   msg.push_back((fuse & 0xff00) >> 8);
   msg.push_back((fuse & 0x00ff));
-
-  if (!setProgrammingVoltages(true))
-    return false;
 
   m_port->writeData(msg);
   try
@@ -940,19 +935,15 @@ bool Programmer::programCalibration(int cal, int fuse)
     return false;
   }
 
-  if (!setProgrammingVoltages(false))
-    return false;
-
   commandEnd();
   return true;
 }
 
 bool Programmer::eraseChip()
 {
-  if (!commandStart())
-    return false;
+  assert(m_VPPEnabled == true);
 
-  if (!setProgrammingVoltages(true))
+  if (!commandStart())
     return false;
 
   std::vector<uint8_t> msg = { 14 };
@@ -976,9 +967,6 @@ bool Programmer::eraseChip()
     fprintf(stderr, "Command failed.\n");
     return false;
   }
-
-  if (!setProgrammingVoltages(false))
-    return false;
 
   commandEnd();
   return true;
@@ -1066,10 +1054,9 @@ bool Programmer::isBlankEEPROM()
 
 bool Programmer::readCONFIG(std::vector<int>& fuses)
 {
-  if (!commandStart())
-    return false;
+  assert(m_VPPEnabled == true);
 
-  if (!setProgrammingVoltages(true))
+  if (!commandStart())
     return false;
 
   std::vector<uint8_t> msg = { 13 };
@@ -1123,21 +1110,17 @@ bool Programmer::readCONFIG(std::vector<int>& fuses)
   }
   fputc('\n', stderr);
 
-  if (!setProgrammingVoltages(false))
-    return false;
-
   commandEnd();
   return true;
 }
 
 bool Programmer::readROM(std::vector<uint8_t>& data)
 {
+  assert(m_VPPEnabled == true);
+
   int ds = m_props.rom_size * 2; // words to bytes
 
   if (!commandStart())
-    return false;
-
-  if (!setProgrammingVoltages(true))
     return false;
 
   std::vector<uint8_t> msg = { 11 };
@@ -1161,16 +1144,13 @@ bool Programmer::readROM(std::vector<uint8_t>& data)
   if (m_debug)
     logbuffer(stderr);
 
-  data = m_buffer;
-
-  if (!setProgrammingVoltages(false))
-    return false;
-
-  if (data.size() != ds)
+  if (m_buffer.size() != ds)
   {
     fprintf(stderr, "Command failed.\n");
     return false;
   }
+
+  data = m_buffer;
 
   commandEnd();
   return true;
@@ -1178,10 +1158,9 @@ bool Programmer::readROM(std::vector<uint8_t>& data)
 
 bool Programmer::readEEPROM(std::vector<uint8_t>& data)
 {
-  if (!commandStart())
-    return false;
+  assert(m_VPPEnabled == true);
 
-  if (!setProgrammingVoltages(true))
+  if (!commandStart())
     return false;
 
   std::vector<uint8_t> msg = { 12 };
@@ -1207,14 +1186,13 @@ bool Programmer::readEEPROM(std::vector<uint8_t>& data)
 
   data = m_buffer;
 
-  if (!setProgrammingVoltages(false))
-    return false;
-
-  if (data.size() != m_props.eeprom_size)
+  if (m_buffer.size() != m_props.eeprom_size)
   {
     fprintf(stderr, "Command failed.\n");
     return false;
   }
+
+  data = m_buffer;
 
   commandEnd();
   return true;
