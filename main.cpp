@@ -25,7 +25,11 @@
 #include "hexdata.h"
 #include "usage.h"
 
-#define PP150_VERSION "1.2.4"
+#ifdef VERSION_STRING
+#define PP150_VERSION VERSION_STRING
+#else
+#define PP150_VERSION "UNDEFINED"
+#endif
 #define PP150_HEADER  "PIC Programmer version " PP150_VERSION " compiled on " __DATE__ " at " __TIME__
 
 //
