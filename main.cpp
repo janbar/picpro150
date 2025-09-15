@@ -485,7 +485,7 @@ int main(int argc, char** argv)
       break;
 
     ok &= read_pic(programmer, icsp, program_rom, program_eeprom, program_config, outhex);
-      
+
     programmer.disconnect();
     break;
   }
@@ -746,11 +746,6 @@ bool read_pic(
   const K150::Programmer::Properties& props = programmer.properties();
   K150::HexData hex;
 
-  // Initialize programming variables
-  ok &= programmer.initializeProgrammingVariables(icsp_mode);
-  if (!ok)
-    return false;
-
   // Instruct user to insert chip
   if (icsp_mode || props.socket_hint.empty())
     fprintf(stderr, "Accessing chip connected to ICSP port.\n");
@@ -761,6 +756,15 @@ bool read_pic(
       return false;
     ::sleep(1);
   }
+
+  // start command session
+  if (!programmer.commandStart())
+    return false;
+
+  // Initialize programming variables
+  ok &= programmer.initializeProgrammingVariables(icsp_mode);
+  if (!ok)
+    return false;
 
   ok &= programmer.setProgrammingVoltages(true);
   if (!ok)
@@ -774,7 +778,10 @@ bool read_pic(
       // ROM word is LE for all cores, so swap bytes
       ok &= hex.loadRAW(props.rom_base, data, true);
     else
+    {
       logdata(stdout, data);
+      fputc('\n', stdout);
+    }
   }
 
   if (program_eeprom)
@@ -798,7 +805,10 @@ bool read_pic(
       }
     }
     else
+    {
       logdata(stdout, data);
+      fputc('\n', stdout);
+    }
   }
 
   if (program_config)
@@ -815,6 +825,10 @@ bool read_pic(
       }
       ok &= hex.loadRAW(props.config_base, data, true);
     }
+    else
+    {
+      fputc('\n', stdout);
+    }
   }
 
   if (ok && !outhex.empty())
@@ -828,6 +842,9 @@ bool read_pic(
 
   ok &= programmer.setProgrammingVoltages(false);
 
+  // end command session
+  programmer.commandEnd();
+
   return ok;
 }
 
@@ -837,11 +854,6 @@ bool erase_pic(
 {
   bool ok = true;
   const K150::Programmer::Properties& props = programmer.properties();
-
-  // Initialize programming variables
-  ok &= programmer.initializeProgrammingVariables(icsp_mode);
-  if (!ok)
-    return false;
 
   // Instruct user to insert chip
   if (icsp_mode || props.socket_hint.empty())
@@ -853,6 +865,15 @@ bool erase_pic(
       return false;
     ::sleep(1);
   }
+
+  // start command session
+  if (!programmer.commandStart())
+    return false;
+
+  // Initialize programming variables
+  ok &= programmer.initializeProgrammingVariables(icsp_mode);
+  if (!ok)
+    return false;
 
   ok &= programmer.setProgrammingVoltages(true);
   if (!ok)
@@ -866,6 +887,9 @@ bool erase_pic(
     fprintf(stderr, "Erasure succeeded.\n");
 
   ok &= programmer.setProgrammingVoltages(false);
+
+  // end command session
+  programmer.commandEnd();
 
   return ok;
 }
@@ -920,11 +944,6 @@ bool program_pic(
   // If write mode is active, program the ROM, EEPROM, ID and fuses
   if (program)
   {
-    // Initialize programming variables
-    ok &= programmer.initializeProgrammingVariables(icsp_mode);
-    if (!ok)
-      return false;
-
     // Instruct user to insert chip
     if (icsp_mode || props.socket_hint.empty())
       fprintf(stderr, "Accessing chip connected to ICSP port.\n");
@@ -935,6 +954,15 @@ bool program_pic(
         return false;
       ::sleep(1);
     }
+
+    // start command session
+    if (!programmer.commandStart())
+      return false;
+
+  // Initialize programming variables
+    ok &= programmer.initializeProgrammingVariables(icsp_mode);
+    if (!ok)
+      return false;
 
     ok &= programmer.setProgrammingVoltages(true);
     if (!ok)
@@ -973,6 +1001,8 @@ bool program_pic(
     }
 
     // Verify programmed data
+    if (!programmer.cycleProgrammingVoltages())
+      return false;
 
     if (program_rom)
     {
@@ -1019,6 +1049,9 @@ bool program_pic(
     }
 
     ok &= programmer.setProgrammingVoltages(false);
+
+    // end command session
+    programmer.commandEnd();
   }
   else
   {
@@ -1088,9 +1121,6 @@ bool verify_pic(
 
   bool ok = true;
 
-  // Initialize programming variables
-  programmer.initializeProgrammingVariables(icsp_mode);
-
   // Instruct user to insert chip
   if (icsp_mode || props.socket_hint.empty())
     fprintf(stderr, "Accessing chip connected to ICSP port.\n");
@@ -1102,7 +1132,14 @@ bool verify_pic(
     ::sleep(1);
   }
 
-  // Verify programmed data
+  // start command session
+  if (!programmer.commandStart())
+    return false;
+
+  // Initialize programming variables
+  ok &= programmer.initializeProgrammingVariables(icsp_mode);
+  if (!ok)
+    return false;
 
   ok &= programmer.setProgrammingVoltages(true);
   if (!ok)
@@ -1136,6 +1173,9 @@ bool verify_pic(
 
   ok &= programmer.setProgrammingVoltages(false);
 
+  // end command session
+  programmer.commandEnd();
+
   return ok;
 }
 
@@ -1154,11 +1194,6 @@ bool isblank_pic(
   K150::HexData hex;
   bool ok = true;
 
-  // Initialize programming variables
-  ok &= programmer.initializeProgrammingVariables(icsp_mode);
-  if (!ok)
-    return false;
-
   // Instruct user to insert chip
   if (icsp_mode || props.socket_hint.empty())
     fprintf(stderr, "Accessing chip connected to ICSP port.\n");
@@ -1170,12 +1205,21 @@ bool isblank_pic(
     ::sleep(1);
   }
 
-  // Verify programmed data
-  std::vector<uint8_t> buf;
+  // start command session
+  if (!programmer.commandStart())
+    return false;
+
+  // Initialize programming variables
+  ok &= programmer.initializeProgrammingVariables(icsp_mode);
+  if (!ok)
+    return false;
 
   ok &= programmer.setProgrammingVoltages(true);
   if (!ok)
     return false;
+
+  // verify programmed data
+  std::vector<uint8_t> buf;
 
   if (program_rom)
   {
@@ -1213,6 +1257,9 @@ bool isblank_pic(
   }
 
   ok &= programmer.setProgrammingVoltages(false);
+
+  // end command session
+  programmer.commandEnd();
 
   return ok;
 }

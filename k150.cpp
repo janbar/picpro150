@@ -147,6 +147,7 @@ bool Programmer::connect(COMPort * port)
   m_port->reset();
   try
   {
+    m_buffer.clear();
     while (m_buffer.size() < 2)
       m_port->readData(m_buffer);
   }
@@ -169,6 +170,7 @@ bool Programmer::connect(COMPort * port)
   m_port->writeData(cmd);
   try
   {
+    m_buffer.clear();
     int attempt = 0;
     while (m_buffer.size() < 4 && attempt++ < 10)
       m_port->readData(m_buffer);
@@ -189,6 +191,8 @@ bool Programmer::connect(COMPort * port)
     fprintf(stderr, "Unsupported protocol (%s).\n", m_protocol.c_str());
     return false;
   }
+
+  commandEnd();
 
   fprintf(stderr, "Programmer %s speaks protocol %s.\n",
           getVersionName().c_str(), getProtocol().c_str());
@@ -320,9 +324,9 @@ bool Programmer::commandStart()
   // go to jump table
   msg = { 'P' };
   m_port->writeData(msg);
-  m_buffer.clear();
   try
   {
+    m_buffer.clear();
     while (m_buffer.size() < 1)
       m_port->readData(m_buffer);
   }
@@ -349,9 +353,9 @@ bool Programmer::commandEnd()
   std::vector<uint8_t> msg;
   msg = { 1 };
   m_port->writeData(msg);
-  m_buffer.clear();
   try
   {
+    m_buffer.clear();
     while (m_buffer.size() < 1)
       m_port->readData(m_buffer);
   }
@@ -385,6 +389,7 @@ bool Programmer::waitUntilChipInSocket()
   m_port->writeData(msg);
   try
   {
+    m_buffer.clear();
     while (m_buffer.size() < 2)
       m_port->readData(m_buffer);
   }
@@ -402,13 +407,17 @@ bool Programmer::waitUntilChipInSocket()
     return false;
   }
 
+  bool ok = false;
+
   if (m_buffer[1] == 'Y')
   {
     fprintf(stderr, "OK\n");
-    return true;
+    ok = true;
   }
 
-  return false;
+  commandEnd();
+
+  return ok;
 }
 
 bool Programmer::waitUntilChipOutOfSocket()
@@ -425,6 +434,7 @@ bool Programmer::waitUntilChipOutOfSocket()
   m_port->writeData(msg);
   try
   {
+    m_buffer.clear();
     while (m_buffer.size() < 2)
       m_port->readData(m_buffer);
   }
@@ -442,21 +452,23 @@ bool Programmer::waitUntilChipOutOfSocket()
     return false;
   }
 
+  bool ok = false;
+
   if (m_buffer[1] == 'Y')
   {
     fprintf(stderr, "OK\n");
-    return true;
+    ok = true;
   }
-  return false;
+
+  commandEnd();
+
+  return ok;
 }
 
 bool Programmer::initializeProgrammingVariables(bool icsp_mode /*= false*/)
 {
   fprintf(stderr, "Initialize programming interface ... ");
   fflush(stderr);
-
-  if (!commandStart())
-    return false;
 
   std::vector<uint8_t> msg = { 3 };
   msg.push_back((m_props.rom_size & 0xff00) >> 8);
@@ -499,6 +511,7 @@ bool Programmer::initializeProgrammingVariables(bool icsp_mode /*= false*/)
   m_port->writeData(msg);
   try
   {
+    m_buffer.clear();
     while (m_buffer.size() < 1)
       m_port->readData(m_buffer);
   }
@@ -517,7 +530,6 @@ bool Programmer::initializeProgrammingVariables(bool icsp_mode /*= false*/)
   }
 
   fprintf(stderr, "OK\n");
-  commandEnd();
   return true;
 }
 
@@ -532,6 +544,7 @@ bool Programmer::setProgrammingVoltages(bool onoff)
     m_port->writeData(msg);
   try
   {
+    m_buffer.clear();
     while (m_buffer.size() < 1)
       m_port->readData(m_buffer);
   }
@@ -557,13 +570,11 @@ bool Programmer::setProgrammingVoltages(bool onoff)
 
 bool Programmer::cycleProgrammingVoltages()
 {
-  if (!commandStart())
-    return false;
-
   std::vector<uint8_t> msg = { 6 };
   m_port->writeData(msg);
   try
   {
+    m_buffer.clear();
     while (m_buffer.size() < 1)
       m_port->readData(m_buffer);
   }
@@ -578,12 +589,11 @@ bool Programmer::cycleProgrammingVoltages()
   if (m_buffer[0] != 'V')
   {
     // reset state
+    commandEnd();
     m_VPPEnabled = false;
     fprintf(stderr, "Command failed.\n");
     return false;
   }
-
-  commandEnd();
 
   // save state
   m_VPPEnabled = true;
@@ -601,9 +611,6 @@ bool Programmer::programROM(const std::vector<uint8_t>& data)
     fprintf(stderr, "Invalid ROM size (%d).\n", wsz);
     return false;
   }
-
-  if (!commandStart())
-    return false;
 
   std::vector<uint8_t> msg = { 7 };
   msg.push_back((wsz & 0xff00) >> 8);
@@ -680,7 +687,6 @@ bool Programmer::programROM(const std::vector<uint8_t>& data)
     return false;
   }
 
-  commandEnd();
   return true;
 }
 
@@ -693,9 +699,6 @@ bool Programmer::programEEPROM(const std::vector<uint8_t>& data)
     fprintf(stderr, "Invalid EEPROM size (%d).\n", (int) data.size());
     return false;
   }
-
-  if (!commandStart())
-    return false;
 
   std::vector<uint8_t> msg = { 8 };
   msg.push_back((data.size() & 0xff00) >> 8);
@@ -777,16 +780,12 @@ bool Programmer::programEEPROM(const std::vector<uint8_t>& data)
     return false;
   }
 
-  commandEnd();
   return true;
 }
 
 bool Programmer::programCONFIG(const std::vector<uint8_t>& id, const std::vector<int>& fuses)
 {
   assert(m_VPPEnabled == true);
-
-  if (!commandStart())
-    return false;
 
   std::vector<uint8_t> msg = { 9 };
 
@@ -855,7 +854,6 @@ bool Programmer::programCONFIG(const std::vector<uint8_t>& id, const std::vector
     return false;
   }
 
-  commandEnd();
   return true;
 }
 
@@ -866,9 +864,6 @@ bool Programmer::programCOMMIT_18FXXXX_FUSE()
   if (m_props.core_bits != 16)
     return true;
   // core 16 bits (PIC18F) requires additional operations
-
-  if (!commandStart())
-    return false;
 
   std::vector<uint8_t> msg = { 17 }; // PROGRAM 18FXXXX FUSE
   m_port->writeData(msg);
@@ -892,16 +887,12 @@ bool Programmer::programCOMMIT_18FXXXX_FUSE()
     return false;
   }
 
-  commandEnd();
   return true;
 }
 
 bool Programmer::programCalibration(int cal, int fuse)
 {
   assert(m_VPPEnabled == true);
-
-  if (!commandStart())
-    return false;
 
   std::vector<uint8_t> msg = { 10 };
   msg.push_back((cal & 0xff00) >> 8);
@@ -935,16 +926,12 @@ bool Programmer::programCalibration(int cal, int fuse)
     return false;
   }
 
-  commandEnd();
   return true;
 }
 
 bool Programmer::eraseChip()
 {
   assert(m_VPPEnabled == true);
-
-  if (!commandStart())
-    return false;
 
   std::vector<uint8_t> msg = { 14 };
   m_port->writeData(msg);
@@ -968,15 +955,11 @@ bool Programmer::eraseChip()
     return false;
   }
 
-  commandEnd();
   return true;
 }
 
 bool Programmer::isBlankROM()
 {
-  if (!commandStart())
-    return false;
-
   std::vector<uint8_t> msg = { 15 };
   msg.push_back((m_props.rom_blank >> 8) & 0xff);
   m_port->writeData(msg);
@@ -1004,15 +987,11 @@ bool Programmer::isBlankROM()
   if (m_debug)
     logbuffer(stderr);
 
-  char c = m_buffer[0];
-
-  commandEnd();
-
-  if (c == 'Y')
+  if (m_buffer[0] == 'Y')
     return true;
-  else if (c == 'N')
+  else if (m_buffer[0] == 'N')
     return false;
-  else if (c == 'C')
+  else if (m_buffer[0] == 'C')
     return false;
 
   fprintf(stderr, "Command failed.\n");
@@ -1021,9 +1000,6 @@ bool Programmer::isBlankROM()
 
 bool Programmer::isBlankEEPROM()
 {
-  if (!commandStart())
-    return false;
-
   std::vector<uint8_t> msg = { 16 };
   m_port->writeData(msg);
   try
@@ -1040,12 +1016,9 @@ bool Programmer::isBlankEEPROM()
   if (m_debug)
     logbuffer(stderr);
 
-  char c = m_buffer[0];
-  commandEnd();
-
-  if (c == 'Y')
+  if (m_buffer[0] == 'Y')
     return true;
-  else if (c == 'N')
+  else if (m_buffer[0] == 'N')
     return false;
 
   fprintf(stderr, "Command failed.\n");
@@ -1055,9 +1028,6 @@ bool Programmer::isBlankEEPROM()
 bool Programmer::readCONFIG(std::vector<int>& fuses)
 {
   assert(m_VPPEnabled == true);
-
-  if (!commandStart())
-    return false;
 
   std::vector<uint8_t> msg = { 13 };
   m_port->writeData(msg);
@@ -1110,7 +1080,6 @@ bool Programmer::readCONFIG(std::vector<int>& fuses)
   }
   fputc('\n', stderr);
 
-  commandEnd();
   return true;
 }
 
@@ -1119,9 +1088,6 @@ bool Programmer::readROM(std::vector<uint8_t>& data)
   assert(m_VPPEnabled == true);
 
   int ds = m_props.rom_size * 2; // words to bytes
-
-  if (!commandStart())
-    return false;
 
   std::vector<uint8_t> msg = { 11 };
   m_port->writeData(msg);
@@ -1152,16 +1118,12 @@ bool Programmer::readROM(std::vector<uint8_t>& data)
 
   data = m_buffer;
 
-  commandEnd();
   return true;
 }
 
 bool Programmer::readEEPROM(std::vector<uint8_t>& data)
 {
   assert(m_VPPEnabled == true);
-
-  if (!commandStart())
-    return false;
 
   std::vector<uint8_t> msg = { 12 };
   m_port->writeData(msg);
@@ -1194,7 +1156,6 @@ bool Programmer::readEEPROM(std::vector<uint8_t>& data)
 
   data = m_buffer;
 
-  commandEnd();
   return true;
 }
 
