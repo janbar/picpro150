@@ -3210,6 +3210,96 @@ LIST7 FUSE1 "DEBUG" "Disabled"=3FFF "Enabled"=37FF
 LIST8 FUSE1 "Oscillator" "RC"=3FFF "HS"=3FFE "XT"=3FFD "LP"=3FFC
 LIST9 FUSE1 "Code Protect" "Disabled"=3FFF "Enabled"=1FFF
 
+CHIPname=16F883
+INCLUDE=Y
+SocketImage=28Npin
+EraseMode=2
+FlashChip=Y
+PowerSequence=VccVpp1
+ProgramDelay=40
+ProgramTries=1
+OverProgram=1
+CoreType=bit14_B
+ROMsize=001000
+EEPROMsize=00000100
+FUSEblank=3FFF
+CPwarn=N
+CALword=N
+BandGap=N
+ICSPonly=N
+ChipID=2020
+LIST1 FUSE1 "WDTimer" "Enabled"=3FFF "Disabled"=3FF7
+LIST2 FUSE1 "PowerUpTimer" "Disabled"=3FFF "Enabled"=3FEF
+LIST3 FUSE1 "Brownout Detect" "Enabled"=3FFF "BORXSLP"=3EFF "SWBOREN"=3DFF "Disabled"=3CFF
+LIST4 FUSE1 "Low V Program" "Enabled"=3FFF "Disabled"=2FFF
+LIST5 FUSE1 "MCLR pin" "Enabled"=3FFF "Disabled"=3FDF
+LIST6 FUSE1 "CPD" "Disabled"=3FFF "Enabled"=3F7F
+LIST7 FUSE1 "ICD2 DEBUG" "Disabled"=3FFF "Enabled"=1FFF
+LIST8 FUSE1 "Osc Mode" "EXTCLK"=3FFF "EXTIO"=3FFE "INTCLK"=3FFD "INTIO"=3FFC "EC"=3FFB "HS"=3FFA "XT"=3FF9 "LP"=3FF8
+LIST9 FUSE1 "Code Protect" "Disabled"=3FFF "Enabled"=3FBF
+LIST10 FUSE1 "Clock Failsafe" "Disabled"=37FF "Enabled"=3FFF
+LIST11 FUSE1 "Clock Switchover" "Disabled"=3BFF "Enabled"=3FFF
+
+CHIPname=16F886
+INCLUDE=Y
+SocketImage=28Npin
+EraseMode=2
+FlashChip=Y
+PowerSequence=VccVpp1
+ProgramDelay=40
+ProgramTries=1
+OverProgram=1
+CoreType=bit14_B
+ROMsize=002000
+EEPROMsize=00000100
+FUSEblank=3FFF
+CPwarn=N
+CALword=N
+BandGap=N
+ICSPonly=N
+ChipID=2060
+LIST1 FUSE1 "WDTimer" "Enabled"=3FFF "Disabled"=3FF7
+LIST2 FUSE1 "PowerUpTimer" "Disabled"=3FFF "Enabled"=3FEF
+LIST3 FUSE1 "Brownout Detect" "Enabled"=3FFF "BORXSLP"=3EFF "SWBOREN"=3DFF "Disabled"=3CFF
+LIST4 FUSE1 "Low V Program" "Enabled"=3FFF "Disabled"=2FFF
+LIST5 FUSE1 "MCLR pin" "Enabled"=3FFF "Disabled"=3FDF
+LIST6 FUSE1 "CPD" "Disabled"=3FFF "Enabled"=3F7F
+LIST7 FUSE1 "ICD2 DEBUG" "Disabled"=3FFF "Enabled"=1FFF
+LIST8 FUSE1 "Osc Mode" "EXTCLK"=3FFF "EXTIO"=3FFE "INTCLK"=3FFD "INTIO"=3FFC "EC"=3FFB "HS"=3FFA "XT"=3FF9 "LP"=3FF8
+LIST9 FUSE1 "Code Protect" "Disabled"=3FFF "Enabled"=3FBF
+LIST10 FUSE1 "Clock Failsafe" "Disabled"=37FF "Enabled"=3FFF
+LIST11 FUSE1 "Clock Switchover" "Disabled"=3BFF "Enabled"=3FFF
+
+CHIPname=16F887
+INCLUDE=Y
+SocketImage=40pin
+EraseMode=2
+FlashChip=Y
+PowerSequence=VccVpp1
+ProgramDelay=40
+ProgramTries=1
+OverProgram=1
+CoreType=bit14_B
+ROMsize=002000
+EEPROMsize=00000100
+FUSEblank=3FFF
+CPwarn=N
+CALword=N
+BandGap=N
+ICSPonly=N
+ChipID=2080
+LIST1 FUSE1 "WDTimer" "Enabled"=3FFF "Disabled"=3FF7
+LIST2 FUSE1 "PowerUpTimer" "Disabled"=3FFF "Enabled"=3FEF
+LIST3 FUSE1 "Brownout Detect" "Enabled"=3FFF "BORXSLP"=3EFF "SWBOREN"=3DFF "Disabled"=3CFF
+LIST4 FUSE1 "Low V Program" "Enabled"=3FFF "Disabled"=2FFF
+LIST5 FUSE1 "MCLR pin" "Disabled"=3FDF "Enabled"=3FFF
+LIST6 FUSE1 "CPD" "Disabled"=3FFF "Enabled"=3F7F
+LIST7 FUSE1 "ICD2 DEBUG" "Disabled"=3FFF "Enabled"=1FFF
+LIST8 FUSE1 "Osc Mode" "INTIO"=3FFC "INTCLK"=3FFD "EXTIO"=3FFE "EXTCLK"=3FFF "EC"=3FFB "HS"=3FFA "XT"=3FF9 "LP"=3FF8
+LIST9 FUSE1 "Code Protect" "Disabled"=3FFF "Enabled"=3FBF
+LIST10 FUSE1 "Clock Failsafe" "Disabled"=37FF "Enabled"=3FFF
+LIST11 FUSE1 "Clock Switchover" "Disabled"=3BFF "Enabled"=3FFF
+
 CHIPname=16F913
 INCLUDE=Y
 SocketImage=28Npin
