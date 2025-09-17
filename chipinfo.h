@@ -52,7 +52,7 @@ public:
     std::string power_sequence;
     int program_delay           = 1;
     int program_tries           = 1;
-    int over_program            = 0;
+    int panel_sizing            = 0;
     std::string core_type;
     int rom_size                = 0;
     int eeprom_size             = 0;

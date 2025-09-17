@@ -64,17 +64,17 @@ COMMAND JUMP TABLE (Byte)
         5 - Core Type
              0 = 18F6x2x
              1 = 18Fx230x330
-             2 = 18Fxx2xx8
+             2 = 18Fxxx
              3 = 16F87 88
              4 = 12C50x
              5 = 12C67x 16C50x 16Cxxx
              6 = 16C8x 16F8x 16F87x 16F62x
              7 = 16F7x 16F7x7
-             8 = 12F67x
+             8 = 12F62x 16F5x
              9 = 16F87xA
             10 = 16F818
-            11 = 16F57
-            12 = 10Fxxx
+            11 = 10Fxxx
+            12 = UNUSED (10Fxxx)
         6 - Program Flags
               Bit 0 = 1, Chip has calibration value ROM word
               Bit 1 = 1, Chip has Band Gap value in FUSE
@@ -99,7 +99,7 @@ COMMAND JUMP TABLE (Byte)
               6 = 10Fxxx
               7 = 16F57
        10 - Program Tries before programming fail
-       11 - Over Program when programming succeeds
+       11 - Panel sizing
 
 
 

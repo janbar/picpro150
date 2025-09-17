@@ -121,7 +121,15 @@ bool CHIPInfo::loaddata(const std::string& datfile, const std::string& chipname)
       if (chipfound)
         break;
     }
-    else if (tokens[0].compare(0, 4, "LIST") != 0)
+    else if (tokens[0].compare(0, 1, "#") == 0)
+    {
+      // comments
+    }
+    else if (tokens[0].compare(0, 4, "LIST") == 0)
+    {
+      // fuse item
+    }
+    else
     {
       std::vector<std::string> var = tokenize(std::string(buf, sz), '=', '"', false);
       if (var.size() > 1)
@@ -150,8 +158,8 @@ bool CHIPInfo::loaddata(const std::string& datfile, const std::string& chipname)
             m_info.program_delay = atoi(unwrap(var[1]).c_str());
           else if (vn == "PROGRAMTRIES")
             m_info.program_tries = atoi(unwrap(var[1]).c_str());
-          else if (vn == "OVERPROGRAM")
-            m_info.over_program = atoi(unwrap(var[1]).c_str());
+          else if (vn == "PANELSIZING")
+            m_info.panel_sizing = atoi(unwrap(var[1]).c_str());
           else if (vn == "CORETYPE")
             m_info.core_type = upperStr(unwrap(var[1]));
           else if (vn == "ROMSIZE")
@@ -176,11 +184,17 @@ bool CHIPInfo::loaddata(const std::string& datfile, const std::string& chipname)
             m_info.band_gap = (upperStr(unwrap(var[1])) == "Y");
           else if (vn == "ICSPONLY")
             m_info.icsp_only = (upperStr(unwrap(var[1])) == "Y");
+          else
+          {
+            fprintf(stderr, ">>> INVALID CHIP INFO: %s\n", std::string(buf, sz).c_str());
+            chipfound = false;
+          }
         }
       }
       else if (chipfound)
       {
         fprintf(stderr, ">>> PARSE ERROR: %s\n", var[0].c_str());
+        chipfound = false;
       }
     }
 

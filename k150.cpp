@@ -287,7 +287,7 @@ bool Programmer::configure(const CHIPInfo& info)
   m_props.program_delay = info.data().program_delay;
   m_props.program_tries = info.data().program_tries;
   m_props.erase_mode = info.data().erase_mode;
-  m_props.over_program = info.data().over_program;
+  m_props.panel_sizing = info.data().panel_sizing;
   m_props.fuse_blank = info.data().fuse_blank;
   m_props.flag_flash_chip = info.data().flash_chip;
   m_props.flag_calibration_value_in_rom = info.data().cal_word;
@@ -505,7 +505,7 @@ bool Programmer::initializeProgrammingVariables(bool icsp_mode /*= false*/)
   }
   msg.push_back(m_props.erase_mode);
   msg.push_back(m_props.program_tries);
-  msg.push_back(m_props.over_program);
+  msg.push_back(m_props.panel_sizing);
 
   m_port->writeData(msg);
   try

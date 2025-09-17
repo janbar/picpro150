@@ -73,7 +73,7 @@ public:
     int power_sequence                      = 0;
     int erase_mode                          = 0;
     int program_tries                       = 0;
-    int over_program                        = 0;
+    int panel_sizing                        = 0;
     int config_base                         = 0;
     std::vector<int> fuse_blank;
     bool flag_calibration_value_in_rom      = false;
