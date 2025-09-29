@@ -30,8 +30,6 @@
 namespace K150
 {
 
-static constexpr uint8_t terminator    = 0x0a;
-
 class COMPort
 {
 public:
