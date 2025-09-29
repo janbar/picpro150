@@ -92,7 +92,7 @@ static SOCKET_HINT SOCKET_HINT_LIST[] = {
 static inline void show_progress(FILE * out, unsigned current, unsigned total)
 {
   static int c = 0;
-  static char PROGRESS[8] = { '|', '/', '-', '\\', };
+  static const char PROGRESS[4] = { '|', '/', '-', '\\', };
   if ((current == 0 || (c % 10) == 0) && total != 0)
     fprintf(stderr, "%c  %u0%%\r", PROGRESS[(c / 10) % 4], (10 * current / total));
   c += 1;
