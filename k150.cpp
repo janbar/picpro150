@@ -369,7 +369,7 @@ bool Programmer::commandEnd()
 
   if (m_buffer[0] != 'Q')
   {
-    fprintf(stderr, "Unexpected response (%u) in command end.", m_buffer[0]);
+    fprintf(stderr, "Unexpected response (%u) in command end.\n", m_buffer[0]);
     return false;
   }
   return true;
